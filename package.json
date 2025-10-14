@@ -1,0 +1,30 @@
+{
+    "name": "next-telescope",
+    "version": "0.1.0",
+    "description": "Toolkit de instrumentación para Next.js con logging, interceptores y WebSocket para monitoreo en tiempo real.",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc --watch",
+        "prepublishOnly": "npm run build"
+    },
+    "author": "Jhon Parra",
+    "license": "MIT",
+    "dependencies": {
+        "ws": "^8.16.0"
+    },
+    "devDependencies": {
+        "@types/ws": "^8.18.1",
+        "typescript": "^5.3.3"
+    },
+    "keywords": [
+        "nextjs",
+        "instrumentation",
+        "logger",
+        "monitoring",
+        "websocket",
+        "debug",
+        "telemetry"
+    ]
+}
