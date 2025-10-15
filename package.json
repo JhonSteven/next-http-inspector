@@ -1,6 +1,6 @@
 {
     "name": "next-telescope",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "description": "Toolkit de instrumentación para Next.js con logging, interceptores y WebSocket para monitoreo en tiempo real.",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",

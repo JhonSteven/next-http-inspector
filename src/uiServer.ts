@@ -1,11 +1,530 @@
 import { createServer, Server } from 'http';
-import { WebSocketServer } from 'ws';
 
-export function createUIServer(port: number, path: string = '/ui'): Server {
+function getStyle() {
+    return `
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --bg-tertiary: #e9ecef;
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --text-muted: #adb5bd;
+            --border-color: #dee2e6;
+            --accent-color: #007bff;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --error-color: #dc3545;
+            --info-color: #17a2b8;
+            --network-bg: #f5f5f5;
+            --network-border: #d0d0d0;
+            --network-header: #f0f0f0;
+        }
+        
+        [data-theme="dark"] {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #1a1a1a;
+            --bg-tertiary: #222;
+            --text-primary: #e0e0e0;
+            --text-secondary: #888;
+            --text-muted: #666;
+            --border-color: #333;
+            --accent-color: #00d4ff;
+            --success-color: #4caf50;
+            --warning-color: #ff9800;
+            --error-color: #f44336;
+            --info-color: #2196f3;
+            --network-bg: #1e1e1e;
+            --network-border: #333;
+            --network-header: #2a2a2a;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--network-bg);
+            color: var(--text-primary);
+            padding: 0;
+            margin: 0;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        .header {
+            background: var(--network-header);
+            border-bottom: 1px solid var(--network-border);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header h1 {
+            color: var(--text-primary);
+            font-size: 16px;
+            font-weight: 500;
+            margin: 0;
+        }
+        
+        .header-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .theme-toggle {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s ease;
+        }
+        
+        .theme-toggle:hover {
+            background: var(--bg-tertiary);
+        }
+        
+        .clear-btn {
+            background: var(--error-color);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        
+        .clear-btn:hover {
+            background: #c82333;
+        }
+        
+        .clear-btn:disabled {
+            background: var(--text-muted);
+            cursor: not-allowed;
+        }
+        
+        .reconnect-btn {
+            background: var(--warning-color);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            margin-right: 8px;
+        }
+        
+        .reconnect-btn:hover {
+            background: #e0a800;
+        }
+        
+        .toolbar {
+            background: var(--network-header);
+            border-bottom: 1px solid var(--network-border);
+            padding: 8px 16px;
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .filters {
+            display: flex;
+            gap: 4px;
+        }
+        
+        .filter-btn {
+            padding: 4px 8px;
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid transparent;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s ease;
+        }
+        
+        .filter-btn:hover {
+            background: var(--bg-tertiary);
+        }
+        
+        .filter-btn.active {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+        
+        .stats {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            margin-left: auto;
+        }
+        
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+        
+        .stat-number {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .network-table {
+            background: var(--bg-primary);
+            border: 1px solid var(--network-border);
+            border-radius: 0;
+            overflow: hidden;
+        }
+        
+        .network-header {
+            background: var(--network-header);
+            border-bottom: 1px solid var(--network-border);
+            padding: 8px 16px;
+            display: grid;
+            grid-template-columns: 1fr 60px 50px 70px 80px;
+            gap: 16px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .network-item {
+            border-bottom: 1px solid var(--network-border);
+            transition: background 0.1s ease;
+        }
+        
+        .network-item:hover {
+            background: var(--bg-tertiary);
+        }
+        
+        .network-item:last-child {
+            border-bottom: none;
+        }
+        
+        .network-row {
+            padding: 8px 16px;
+            display: grid;
+            grid-template-columns: 1fr 60px 50px 70px 80px;
+            gap: 16px;
+            align-items: center;
+            cursor: pointer;
+        }
+        
+        .network-url {
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 11px;
+            color: var(--text-primary);
+            word-break: break-all;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .network-method {
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 600;
+            text-align: center;
+            width: 60px;
+        }
+        
+        .method-GET { background: var(--success-color); color: white; }
+        .method-POST { background: var(--warning-color); color: white; }
+        .method-PUT { background: var(--info-color); color: white; }
+        .method-DELETE { background: var(--error-color); color: white; }
+        .method-PATCH { background: #9c27b0; color: white; }
+        
+        .network-status {
+            font-size: 11px;
+            font-weight: 500;
+            text-align: center;
+            width: 50px;
+        }
+        
+        .status-2xx { color: var(--success-color); }
+        .status-3xx { color: var(--warning-color); }
+        .status-4xx { color: var(--error-color); }
+        .status-5xx { color: var(--error-color); }
+        
+        .network-duration {
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-align: right;
+            width: 70px;
+        }
+        
+        .network-time {
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 10px;
+            color: var(--text-muted);
+            text-align: right;
+            width: 80px;
+        }
+        
+        .network-details {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--network-border);
+            padding: 16px;
+        }
+        
+        .details-section {
+            margin-bottom: 16px;
+        }
+        
+        .details-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .details-content {
+            background: var(--bg-primary);
+            padding: 12px;
+            border-radius: 4px;
+            border: 1px solid var(--network-border);
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 11px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .json-content-container {
+            position: relative;
+        }
+        
+        .json-content {
+            white-space: pre-wrap;
+            word-break: break-word;
+            padding-right: 60px;
+        }
+        
+        .copy-button {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            opacity: 0.8;
+        }
+        
+        .copy-button:hover {
+            opacity: 1;
+            background: var(--accent-color);
+            transform: scale(1.05);
+        }
+        
+        .copy-button:active {
+            transform: scale(0.95);
+        }
+        
+        .headers-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 8px;
+        }
+        
+        .header-key {
+            font-weight: 600;
+            color: var(--accent-color);
+        }
+        
+        .header-value {
+            color: var(--text-primary);
+        }
+        
+        .expand-icon {
+            font-size: 10px;
+            color: var(--text-muted);
+            transition: transform 0.2s ease;
+        }
+        
+        .expand-icon.expanded {
+            transform: rotate(90deg);
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        .error-item {
+            background: var(--bg-secondary);
+            border-left: 3px solid var(--error-color);
+        }
+        
+        .error-message {
+            color: var(--error-color);
+            font-weight: 600;
+        }
+        
+        .tabs-container {
+            margin-top: 16px;
+        }
+        
+        .tabs-header {
+            display: flex;
+            border-bottom: 1px solid var(--network-border);
+            margin-bottom: 16px;
+        }
+        
+        .tab-button {
+            background: transparent;
+            border: none;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+        
+        .tab-button:hover {
+            color: var(--text-primary);
+            background: var(--bg-tertiary);
+        }
+        
+        .tab-button.active {
+            color: var(--accent-color);
+            border-bottom-color: var(--accent-color);
+            background: var(--bg-primary);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .json-viewer {
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+        
+        .json-key {
+            color: var(--accent-color);
+            font-weight: 600;
+        }
+        
+        .json-string {
+            color: var(--success-color);
+        }
+        
+        .json-number {
+            color: var(--info-color);
+        }
+        
+        .json-boolean {
+            color: var(--warning-color);
+        }
+        
+        .json-null {
+            color: var(--text-muted);
+            font-style: italic;
+        }
+        
+        .json-toggle {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 10px;
+            margin-right: 4px;
+            padding: 0;
+            width: 12px;
+            height: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .json-toggle:hover {
+            color: var(--text-primary);
+        }
+        
+        .json-object {
+            margin-left: 16px;
+        }
+        
+        .json-array {
+            margin-left: 16px;
+        }
+        
+        .json-collapsed {
+            display: none;
+        }
+        
+        .json-expanded {
+            display: block;
+        }
+        
+        .json-bracket {
+            color: var(--text-muted);
+        }
+        
+        .json-comma {
+            color: var(--text-muted);
+        }
+        
+        @media (max-width: 768px) {
+            .network-header,
+            .network-row {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+            
+            .network-method, .network-status, .network-duration, .network-time {
+                text-align: left;
+                width: auto;
+            }
+        }
+    </style>
+    `;
+}
+
+export function createUIServer(port: number, path: string = '/ui', wsPort: number = 8080): Server {
   const server = createServer((req, res) => {
     if (req.url === path) {
       res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end(getUIHTML());
+      res.end(getReactUIHTML(wsPort));
     } else {
       res.writeHead(404, { 'Content-Type': 'text/plain' });
       res.end('Not Found');
@@ -19,356 +538,641 @@ export function createUIServer(port: number, path: string = '/ui'): Server {
   return server;
 }
 
-function getUIHTML(): string {
+function getReactUIHTML(wsPort: number = 8080): string {
   return `
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Next Telescope - Fetch Monitor</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0a0a0a;
-            color: #e0e0e0;
-            padding: 20px;
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        
-        .header h1 {
-            color: #00d4ff;
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-        }
-        
-        .header p {
-            color: #888;
-            font-size: 1.1rem;
-        }
-        
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        
-        .stat-card {
-            background: #1a1a1a;
-            padding: 20px;
-            border-radius: 8px;
-            border: 1px solid #333;
-            text-align: center;
-        }
-        
-        .stat-number {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #00d4ff;
-        }
-        
-        .stat-label {
-            color: #888;
-            margin-top: 5px;
-        }
-        
-        .filters {
-            margin-bottom: 20px;
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        
-        .filter-btn {
-            padding: 8px 16px;
-            background: #333;
-            color: #e0e0e0;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        
-        .filter-btn:hover {
-            background: #444;
-        }
-        
-        .filter-btn.active {
-            background: #00d4ff;
-            color: #000;
-        }
-        
-        .fetch-list {
-            background: #1a1a1a;
-            border-radius: 8px;
-            border: 1px solid #333;
-            overflow: hidden;
-        }
-        
-        .fetch-item {
-            padding: 15px 20px;
-            border-bottom: 1px solid #333;
-            display: grid;
-            grid-template-columns: 1fr auto auto auto;
-            gap: 20px;
-            align-items: center;
-            transition: background 0.2s;
-        }
-        
-        .fetch-item:hover {
-            background: #222;
-        }
-        
-        .fetch-item:last-child {
-            border-bottom: none;
-        }
-        
-        .fetch-url {
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 0.9rem;
-            word-break: break-all;
-        }
-        
-        .fetch-method {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            font-weight: bold;
-            text-align: center;
-            min-width: 60px;
-        }
-        
-        .method-GET { background: #4caf50; color: white; }
-        .method-POST { background: #ff9800; color: white; }
-        .method-PUT { background: #2196f3; color: white; }
-        .method-DELETE { background: #f44336; color: white; }
-        .method-PATCH { background: #9c27b0; color: white; }
-        
-        .fetch-status {
-            font-weight: bold;
-            text-align: center;
-            min-width: 50px;
-        }
-        
-        .status-2xx { color: #4caf50; }
-        .status-3xx { color: #ff9800; }
-        .status-4xx { color: #f44336; }
-        .status-5xx { color: #f44336; }
-        
-        .fetch-duration {
-            font-family: 'Monaco', 'Menlo', monospace;
-            color: #888;
-            text-align: right;
-            min-width: 80px;
-        }
-        
-        .timestamp {
-            font-size: 0.8rem;
-            color: #666;
-            margin-top: 5px;
-        }
-        
-        .no-data {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-        }
-        
-        .error-item {
-            background: #2a1a1a;
-            border-left: 4px solid #f44336;
-        }
-        
-        .error-message {
-            color: #f44336;
-            font-weight: bold;
-        }
-        
-        @media (max-width: 768px) {
-            .fetch-item {
-                grid-template-columns: 1fr;
-                gap: 10px;
-            }
-            
-            .fetch-method, .fetch-status, .fetch-duration {
-                text-align: left;
-            }
-        }
-    </style>
+    <title>Next Telescope - Network Monitor</title>
+    ${getStyle()}
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
-    <div class="header">
-        <h1>🔭 Next Telescope</h1>
-        <p>Monitor de Fetch Requests en Tiempo Real</p>
-    </div>
-    
-    <div class="stats">
-        <div class="stat-card">
-            <div class="stat-number" id="total-requests">0</div>
-            <div class="stat-label">Total Requests</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number" id="success-rate">0%</div>
-            <div class="stat-label">Success Rate</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number" id="avg-duration">0ms</div>
-            <div class="stat-label">Avg Duration</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number" id="errors">0</div>
-            <div class="stat-label">Errors</div>
-        </div>
-    </div>
-    
-    <div class="filters">
-        <button class="filter-btn active" data-filter="all">Todos</button>
-        <button class="filter-btn" data-filter="GET">GET</button>
-        <button class="filter-btn" data-filter="POST">POST</button>
-        <button class="filter-btn" data-filter="PUT">PUT</button>
-        <button class="filter-btn" data-filter="DELETE">DELETE</button>
-        <button class="filter-btn" data-filter="error">Errores</button>
-    </div>
-    
-    <div class="fetch-list" id="fetch-list">
-        <div class="no-data">
-            Esperando requests...
-        </div>
-    </div>
+    <div id="root"></div>
 
-    <script>
-        let allRequests = [];
-        let ws;
-        
-        function connectWebSocket() {
-            ws = new WebSocket('ws://localhost:8000');
-            
-            ws.onopen = function() {
-                console.log('Conectado al WebSocket');
-            };
-            
-            ws.onmessage = function(event) {
-                const data = JSON.parse(event.data);
-                
-                if (data.type === 'fetch' || data.type === 'fetch_error') {
-                    const request = {
-                        ...data.payload,
-                        type: data.type,
-                        id: Date.now() + Math.random()
+    <script type="text/babel">
+        const { useState, useEffect, useCallback } = React;
+
+        // Types
+        const FilterType = {
+            ALL: 'all',
+            GET: 'GET',
+            POST: 'POST',
+            PUT: 'PUT',
+            DELETE: 'DELETE',
+            ERROR: 'error'
+        };
+
+        // Custom Hooks
+        function useWebSocket(wsPort, onMessage) {
+            const [isConnected, setIsConnected] = useState(false);
+            const [ws, setWs] = useState(null);
+            const [reconnectAttempts, setReconnectAttempts] = useState(0);
+            const [isReconnecting, setIsReconnecting] = useState(false);
+            const [connectionError, setConnectionError] = useState(null);
+
+            const connectWebSocket = () => {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    return;
+                }
+
+                try {
+                    setConnectionError(null);
+                    const websocket = new WebSocket(\`ws://localhost:\${wsPort}\`);
+                    
+                    websocket.onopen = () => {
+                        console.log(\`Connected to WebSocket on port \${wsPort}\`);
+                        setIsConnected(true);
+                        setWs(websocket);
+                        setReconnectAttempts(0);
+                        setIsReconnecting(false);
+                        setConnectionError(null);
                     };
                     
-                    allRequests.unshift(request);
-                    updateUI();
+                    websocket.onmessage = (event) => {
+                        try {
+                            const data = JSON.parse(event.data);
+                            onMessage(data);
+                        } catch (e) {
+                            console.error('Error parsing WebSocket message:', e);
+                        }
+                    };
+                    
+                    websocket.onclose = (event) => {
+                        console.log('WebSocket disconnected:', event.code, event.reason);
+                        setIsConnected(false);
+                        setWs(null);
+                        
+                        // Only attempt reconnection if it wasn't a manual close
+                        if (event.code !== 1000 && reconnectAttempts < 5) {
+                            setIsReconnecting(true);
+                            const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000); // Max 10 seconds
+                            console.log(\`Attempting to reconnect in \${delay/1000} seconds... (attempt \${reconnectAttempts + 1}/5)\`);
+                            
+                            setTimeout(() => {
+                                setReconnectAttempts(prev => prev + 1);
+                                connectWebSocket();
+                            }, delay);
+                        } else if (reconnectAttempts >= 5) {
+                            console.error('Max reconnection attempts reached.');
+                            setIsReconnecting(false);
+                            setConnectionError('Unable to connect to WebSocket server. Make sure the Next.js app is running with instrumentation enabled.');
+                        }
+                    };
+                    
+                    websocket.onerror = (error) => {
+                        console.error('WebSocket error:', error);
+                        setIsConnected(false);
+                        setIsReconnecting(false);
+                        setConnectionError('WebSocket connection failed. Check if the server is running.');
+                    };
+
+                } catch (error) {
+                    console.error('Failed to create WebSocket connection:', error);
+                    setIsConnected(false);
+                    setIsReconnecting(false);
+                    setConnectionError('Failed to create WebSocket connection.');
                 }
             };
-            
-            ws.onclose = function() {
-                console.log('WebSocket desconectado, reconectando...');
-                setTimeout(connectWebSocket, 3000);
+
+            const manualReconnect = () => {
+                setReconnectAttempts(0);
+                setIsReconnecting(false);
+                setConnectionError(null);
+                connectWebSocket();
             };
-            
-            ws.onerror = function(error) {
-                console.error('Error WebSocket:', error);
+
+            useEffect(() => {
+                connectWebSocket();
+
+                return () => {
+                    if (ws) {
+                        ws.close(1000, 'Component unmounting');
+                    }
+                };
+            }, [wsPort]);
+
+            return { isConnected, ws, isReconnecting, connectionError, manualReconnect };
+        }
+
+        function useTheme() {
+            const [theme, setTheme] = useState('light');
+
+            useEffect(() => {
+                const savedTheme = localStorage.getItem('theme') || 'light';
+                setTheme(savedTheme);
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }, []);
+
+            const toggleTheme = () => {
+                const newTheme = theme === 'dark' ? 'light' : 'dark';
+                setTheme(newTheme);
+                localStorage.setItem('theme', newTheme);
+                document.documentElement.setAttribute('data-theme', newTheme);
             };
+
+            return { theme, toggleTheme };
         }
-        
-        function updateUI() {
-            updateStats();
-            renderRequests();
+
+        // Components
+        function Header({ onToggleTheme, onClearAll, theme, onReconnect, connectionError }) {
+            return React.createElement('div', { className: 'header' },
+                React.createElement('h1', null, '🔭 Next Telescope'),
+                React.createElement('div', { className: 'header-controls' },
+                    connectionError && React.createElement('button', { 
+                        className: 'reconnect-btn', 
+                        onClick: onReconnect,
+                        title: 'Reconnect to WebSocket'
+                    }, '🔄 Reconnect'),
+                    React.createElement('button', { 
+                        className: 'theme-toggle', 
+                        onClick: onToggleTheme 
+                    }, theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode'),
+                    React.createElement('button', { 
+                        className: 'clear-btn', 
+                        onClick: onClearAll 
+                    }, '🗑️ Clear All')
+                )
+            );
         }
-        
-        function updateStats() {
-            const total = allRequests.length;
-            const successful = allRequests.filter(r => r.type === 'fetch' && r.status >= 200 && r.status < 300).length;
-            const errors = allRequests.filter(r => r.type === 'fetch_error').length;
-            const successRate = total > 0 ? Math.round((successful / total) * 100) : 0;
-            
-            const durations = allRequests
-                .filter(r => r.duration)
-                .map(r => parseFloat(r.duration.replace(' ms', '')));
-            const avgDuration = durations.length > 0 
-                ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
-                : 0;
-            
-            document.getElementById('total-requests').textContent = total;
-            document.getElementById('success-rate').textContent = successRate + '%';
-            document.getElementById('avg-duration').textContent = avgDuration + 'ms';
-            document.getElementById('errors').textContent = errors;
+
+        function Toolbar({ filter, onFilterChange, stats, isConnected, isReconnecting }) {
+            const filters = ['all', 'GET', 'POST', 'PUT', 'DELETE', 'error'];
+
+            return React.createElement('div', { className: 'toolbar' },
+                React.createElement('div', { className: 'filters' },
+                    ...filters.map(filterType => 
+                        React.createElement('button', {
+                            key: filterType,
+                            className: \`filter-btn \${filter === filterType ? 'active' : ''}\`,
+                            onClick: () => onFilterChange(filterType)
+                        }, filterType)
+                    )
+                ),
+                React.createElement('div', { className: 'stats' },
+                    React.createElement('div', { className: 'stat-item' },
+                        React.createElement('span', { className: 'stat-number' }, stats.total),
+                        React.createElement('span', null, 'requests')
+                    ),
+                    React.createElement('div', { className: 'stat-item' },
+                        React.createElement('span', { className: 'stat-number' }, 
+                            stats.total > 0 ? Math.round((stats.successful / stats.total) * 100) : 0
+                        ),
+                        React.createElement('span', null, 'success')
+                    ),
+                    React.createElement('div', { className: 'stat-item' },
+                        React.createElement('span', { className: 'stat-number' }, \`\${stats.avgDuration}ms\`),
+                        React.createElement('span', null, 'avg time')
+                    ),
+                    React.createElement('div', { className: 'stat-item' },
+                        React.createElement('span', { className: 'stat-number' }, stats.errors),
+                        React.createElement('span', null, 'errors')
+                    ),
+                    React.createElement('div', { className: 'stat-item' },
+                        React.createElement('span', { 
+                            className: 'stat-number', 
+                            style: { 
+                                color: isConnected ? 'var(--success-color)' : 
+                                       isReconnecting ? 'var(--warning-color)' : 'var(--error-color)' 
+                            }
+                        }, isConnected ? '🟢' : isReconnecting ? '🟡' : '🔴'),
+                        React.createElement('span', null, isConnected ? 'connected' : isReconnecting ? 'reconnecting...' : 'disconnected')
+                    )
+                )
+            );
         }
-        
-        function renderRequests() {
-            const filter = document.querySelector('.filter-btn.active').dataset.filter;
-            const container = document.getElementById('fetch-list');
+
+        function NetworkItem({ request, isExpanded, onToggleExpand }) {
+            const [activeTab, setActiveTab] = React.useState('details');
             
-            let filteredRequests = allRequests;
-            
-            if (filter === 'error') {
-                filteredRequests = allRequests.filter(r => r.type === 'fetch_error');
-            } else if (filter !== 'all') {
-                filteredRequests = allRequests.filter(r => r.method === filter);
-            }
-            
-            if (filteredRequests.length === 0) {
-                container.innerHTML = '<div class="no-data">No hay requests que coincidan con el filtro</div>';
-                return;
-            }
-            
-            container.innerHTML = filteredRequests.map(request => {
-                if (request.type === 'fetch_error') {
-                    return \`
-                        <div class="fetch-item error-item">
-                            <div>
-                                <div class="fetch-url">\${request.url}</div>
-                                <div class="error-message">Error: \${request.error}</div>
-                                <div class="timestamp">\${new Date(request.timestamp).toLocaleString()}</div>
+            const formatTime = (dateString) => {
+                const date = new Date(dateString);
+                return date.toLocaleTimeString('en-US', { 
+                    hour12: false, 
+                    hour: '2-digit', 
+                    minute: '2-digit', 
+                    second: '2-digit',
+                    fractionalSecondDigits: 3
+                });
+            };
+
+            const JsonValue = ({ value, level = 0 }) => {
+                const [isExpanded, setIsExpanded] = React.useState(level < 2);
+                const toggleExpanded = () => setIsExpanded(!isExpanded);
+                
+                if (value === null) {
+                    return React.createElement('span', { className: 'json-null' }, 'null');
+                }
+                
+                if (typeof value === 'string') {
+                    return React.createElement('span', { className: 'json-string' }, \`"\${value}"\`);
+                }
+                
+                if (typeof value === 'number') {
+                    return React.createElement('span', { className: 'json-number' }, value.toString());
+                }
+                
+                if (typeof value === 'boolean') {
+                    return React.createElement('span', { className: 'json-boolean' }, value.toString());
+                }
+                
+                if (Array.isArray(value)) {
+                    if (value.length === 0) {
+                        return React.createElement('span', { className: 'json-bracket' }, '[]');
+                    }
+                    
+                    return React.createElement('div', { className: 'json-array' },
+                        React.createElement('button', { 
+                            className: 'json-toggle',
+                            onClick: toggleExpanded 
+                        }, isExpanded ? '▼' : '▶'),
+                        React.createElement('span', { className: 'json-bracket' }, '['),
+                        isExpanded && React.createElement('div', { className: 'json-expanded' },
+                            ...value.map((item, index) => 
+                                React.createElement('div', { key: index },
+                                    React.createElement(JsonValue, { value: item, level: level + 1 }),
+                                    index < value.length - 1 && React.createElement('span', { className: 'json-comma' }, ',')
+                                )
+                            )
+                        ),
+                        !isExpanded && React.createElement('span', { className: 'json-bracket' }, '...'),
+                        React.createElement('span', { className: 'json-bracket' }, ']')
+                    );
+                }
+                
+                if (typeof value === 'object') {
+                    const entries = Object.entries(value);
+                    
+                    if (entries.length === 0) {
+                        return React.createElement('span', { className: 'json-bracket' }, '{}');
+                    }
+                    
+                    return React.createElement('div', { className: 'json-object' },
+                        React.createElement('button', { 
+                            className: 'json-toggle',
+                            onClick: toggleExpanded 
+                        }, isExpanded ? '▼' : '▶'),
+                        React.createElement('span', { className: 'json-bracket' }, '{'),
+                        isExpanded && React.createElement('div', { className: 'json-expanded' },
+                            ...entries.map(([objKey, objValue], index) => 
+                                React.createElement('div', { key: objKey },
+                                    React.createElement('span', { className: 'json-key' }, \`"\${objKey}"\`),
+                                    React.createElement('span', { className: 'json-bracket' }, ': '),
+                                    React.createElement(JsonValue, { value: objValue, level: level + 1 }),
+                                    index < entries.length - 1 && React.createElement('span', { className: 'json-comma' }, ',')
+                                )
+                            )
+                        ),
+                        !isExpanded && React.createElement('span', { className: 'json-bracket' }, '...'),
+                        React.createElement('span', { className: 'json-bracket' }, '}')
+                    );
+                }
+                
+                return React.createElement('span', null, String(value));
+            };
+
+            const renderRequestDetails = (request) => {
+                let details = '';
+                
+                if (request.urlParsed) {
+                    details += \`
+                        <div class="details-section">
+                            <div class="details-title">URL Breakdown</div>
+                            <div class="details-content">
+                                <div><strong>Protocol:</strong> \${request.urlParsed.protocol}</div>
+                                <div><strong>Host:</strong> \${request.urlParsed.hostname}\${request.urlParsed.port ? ':' + request.urlParsed.port : ''}</div>
+                                <div><strong>Path:</strong> \${request.urlParsed.pathname}</div>
+                                <div><strong>Query:</strong> \${request.urlParsed.search || 'N/A'}</div>
+                                <div><strong>Hash:</strong> \${request.urlParsed.hash || 'N/A'}</div>
                             </div>
-                            <div class="fetch-method method-\${request.method}">\${request.method}</div>
-                            <div class="fetch-status" style="color: #f44336;">ERROR</div>
-                            <div class="fetch-duration">-</div>
                         </div>
                     \`;
                 }
                 
-                const statusClass = request.status >= 200 && request.status < 300 ? 'status-2xx' :
-                                  request.status >= 300 && request.status < 400 ? 'status-3xx' :
-                                  request.status >= 400 && request.status < 500 ? 'status-4xx' : 'status-5xx';
-                
-                return \`
-                    <div class="fetch-item">
-                        <div>
-                            <div class="fetch-url">\${request.url}</div>
-                            <div class="timestamp">\${new Date(request.timestamp).toLocaleString()}</div>
+                if (request.urlParams && Object.keys(request.urlParams).length > 0) {
+                    details += \`
+                        <div class="details-section">
+                            <div class="details-title">URL Parameters</div>
+                            <div class="details-content">
+                                <div class="headers-grid">
+                                    \${Object.entries(request.urlParams).map(([key, value]) => 
+                                        \`<div class="header-key">\${key}:</div><div class="header-value">\${value}</div>\`
+                                    ).join('')}
+                                </div>
+                            </div>
                         </div>
-                        <div class="fetch-method method-\${request.method}">\${request.method}</div>
-                        <div class="fetch-status \${statusClass}">\${request.status}</div>
-                        <div class="fetch-duration">\${request.duration}</div>
-                    </div>
-                \`;
-            }).join('');
+                    \`;
+                }
+                
+                if (request.requestHeaders && Object.keys(request.requestHeaders).length > 0) {
+                    details += \`
+                        <div class="details-section">
+                            <div class="details-title">Request Headers</div>
+                            <div class="details-content">
+                                <div class="headers-grid">
+                                    \${Object.entries(request.requestHeaders).map(([key, value]) => 
+                                        \`<div class="header-key">\${key}:</div><div class="header-value">\${value}</div>\`
+                                    ).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    \`;
+                }
+                
+                if (request.responseHeaders && Object.keys(request.responseHeaders).length > 0) {
+                    details += \`
+                        <div class="details-section">
+                            <div class="details-title">Response Headers</div>
+                            <div class="details-content">
+                                <div class="headers-grid">
+                                    \${Object.entries(request.responseHeaders).map(([key, value]) => 
+                                        \`<div class="header-key">\${key}:</div><div class="header-value">\${value}</div>\`
+                                    ).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    \`;
+                }
+                
+                if (request.startTime && request.endTime) {
+                    details += \`
+                        <div class="details-section">
+                            <div class="details-title">Timing Information</div>
+                            <div class="details-content">
+                                <div><strong>Start Time:</strong> \${new Date(request.startDate).toLocaleString()}</div>
+                                <div><strong>End Time:</strong> \${new Date(request.endDate || '').toLocaleString()}</div>
+                                <div><strong>Duration:</strong> \${request.duration}</div>
+                                <div><strong>Start Timestamp:</strong> \${request.startTime.toFixed(2)}ms</div>
+                                <div><strong>End Timestamp:</strong> \${request.endTime.toFixed(2)}ms</div>
+                            </div>
+                        </div>
+                    \`;
+                }
+                
+                return details;
+            };
+
+            const renderResponseBody = (request) => {
+                if (!request.responseBody) {
+                    return React.createElement('div', { className: 'no-data' }, 'No response body');
+                }
+                
+                try {
+                    let parsedBody;
+                    if (typeof request.responseBody === 'string') {
+                        parsedBody = JSON.parse(request.responseBody);
+                    } else {
+                        parsedBody = request.responseBody;
+                    }
+                    
+                    return React.createElement('div', { className: 'json-viewer' },
+                        React.createElement(JsonValue, { value: parsedBody })
+                    );
+                } catch (e) {
+                    return React.createElement('div', { className: 'details-content' },
+                        React.createElement('pre', { style: { whiteSpace: 'pre-wrap', wordBreak: 'break-word' } }, 
+                            typeof request.responseBody === 'string' ? request.responseBody : JSON.stringify(request.responseBody, null, 2)
+                        )
+                    );
+                }
+            };
+
+            if (request.type === 'fetch_error') {
+                return React.createElement('div', { 
+                    className: 'network-item error-item', 
+                    'data-id': request.id 
+                },
+                    React.createElement('div', { 
+                        className: 'network-row', 
+                        onClick: () => onToggleExpand(request.id) 
+                    },
+                        React.createElement('div', { className: 'network-url' },
+                            React.createElement('span', { 
+                                className: \`expand-icon \${isExpanded ? 'expanded' : ''}\` 
+                            }, '▶'),
+                            React.createElement('span', null, request.url)
+                        ),
+                        React.createElement('div', { 
+                            className: \`network-method method-\${request.method}\` 
+                        }, request.method),
+                        React.createElement('div', { 
+                            className: 'network-status', 
+                            style: { color: 'var(--error-color)' } 
+                        }, 'ERROR'),
+                        React.createElement('div', { className: 'network-duration' }, request.duration),
+                        React.createElement('div', { className: 'network-time' }, formatTime(request.startDate))
+                    ),
+                    isExpanded && React.createElement('div', { className: 'network-details' },
+                        React.createElement('div', { className: 'error-message' }, \`Error: \${request.error}\`),
+                        React.createElement('div', { className: 'tabs-container' },
+                            React.createElement('div', { className: 'tabs-header' },
+                                React.createElement('button', {
+                                    className: \`tab-button \${activeTab === 'details' ? 'active' : ''}\`,
+                                    onClick: () => setActiveTab('details')
+                                }, 'Details')
+                            ),
+                            React.createElement('div', { 
+                                className: \`tab-content \${activeTab === 'details' ? 'active' : ''}\`
+                            },
+                                React.createElement('div', { 
+                                    dangerouslySetInnerHTML: { __html: renderRequestDetails(request) } 
+                                })
+                            )
+                        )
+                    )
+                );
+            }
+
+            const statusClass = request.status && request.status >= 200 && request.status < 300 ? 'status-2xx' :
+                              request.status && request.status >= 300 && request.status < 400 ? 'status-3xx' :
+                              request.status && request.status >= 400 && request.status < 500 ? 'status-4xx' : 'status-5xx';
+
+            return React.createElement('div', { 
+                className: 'network-item', 
+                'data-id': request.id 
+            },
+                React.createElement('div', { 
+                    className: 'network-row', 
+                    onClick: () => onToggleExpand(request.id) 
+                },
+                    React.createElement('div', { className: 'network-url' },
+                        React.createElement('span', { 
+                            className: \`expand-icon \${isExpanded ? 'expanded' : ''}\` 
+                        }, '▶'),
+                        React.createElement('span', null, request.url)
+                    ),
+                    React.createElement('div', { 
+                        className: \`network-method method-\${request.method}\` 
+                    }, request.method),
+                    React.createElement('div', { 
+                        className: \`network-status \${statusClass}\` 
+                    }, request.status),
+                    React.createElement('div', { className: 'network-duration' }, request.duration),
+                    React.createElement('div', { className: 'network-time' }, formatTime(request.startDate))
+                ),
+                isExpanded && React.createElement('div', { className: 'network-details' },
+                    React.createElement('div', { className: 'tabs-container' },
+                        React.createElement('div', { className: 'tabs-header' },
+                            React.createElement('button', {
+                                className: \`tab-button \${activeTab === 'details' ? 'active' : ''}\`,
+                                onClick: () => setActiveTab('details')
+                            }, 'Details'),
+                            React.createElement('button', {
+                                className: \`tab-button \${activeTab === 'response' ? 'active' : ''}\`,
+                                onClick: () => setActiveTab('response')
+                            }, 'Response Body')
+                        ),
+                        React.createElement('div', { 
+                            className: \`tab-content \${activeTab === 'details' ? 'active' : ''}\`
+                        },
+                            React.createElement('div', { 
+                                dangerouslySetInnerHTML: { __html: renderRequestDetails(request) } 
+                            })
+                        ),
+                        React.createElement('div', { 
+                            className: \`tab-content \${activeTab === 'response' ? 'active' : ''}\`
+                        },
+                            renderResponseBody(request)
+                        )
+                    )
+                )
+            );
         }
-        
-        // Event listeners
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-                renderRequests();
+
+        function NetworkTable({ requests, expandedItems, onToggleExpand }) {
+            if (requests.length === 0) {
+                return React.createElement('div', { className: 'network-table' },
+                    React.createElement('div', { className: 'network-header' },
+                        React.createElement('div', null, 'Name'),
+                        React.createElement('div', null, 'Method'),
+                        React.createElement('div', null, 'Status'),
+                        React.createElement('div', null, 'Duration'),
+                        React.createElement('div', null, 'Time')
+                    ),
+                    React.createElement('div', { className: 'no-data' }, 'Waiting for requests...')
+                );
+            }
+
+            return React.createElement('div', { className: 'network-table' },
+                React.createElement('div', { className: 'network-header' },
+                    React.createElement('div', null, 'Name'),
+                    React.createElement('div', null, 'Method'),
+                    React.createElement('div', null, 'Status'),
+                    React.createElement('div', null, 'Duration'),
+                    React.createElement('div', null, 'Time')
+                ),
+                React.createElement('div', { id: 'network-list' },
+                    ...requests.map(request => 
+                        React.createElement(NetworkItem, {
+                            key: request.id,
+                            request: request,
+                            isExpanded: expandedItems.has(request.id),
+                            onToggleExpand: onToggleExpand
+                        })
+                    )
+                )
+            );
+        }
+
+        function App({ wsPort }) {
+            const [requests, setRequests] = useState([]);
+            const [filter, setFilter] = useState('all');
+            const [expandedItems, setExpandedItems] = useState(new Set());
+            
+            const { theme, toggleTheme } = useTheme();
+            const { isConnected, isReconnecting, connectionError, manualReconnect } = useWebSocket(wsPort, (data) => {
+                if (data.type === 'fetch' || data.type === 'fetch_error') {
+                    const request = {
+                        ...data.payload,
+                        type: data.type,
+                        id: data.payload.id || 'req_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+                    };
+                    
+                    setRequests(prev => [...prev, request]);
+                }
             });
-        });
-        
-        // Inicializar
-        connectWebSocket();
+
+            const clearAllRequests = useCallback(() => {
+                setRequests([]);
+                setExpandedItems(new Set());
+            }, []);
+
+            const toggleExpand = useCallback((requestId) => {
+                setExpandedItems(prev => {
+                    const newSet = new Set(prev);
+                    if (newSet.has(requestId)) {
+                        newSet.delete(requestId);
+                    } else {
+                        newSet.add(requestId);
+                    }
+                    return newSet;
+                });
+            }, []);
+
+            const filteredRequests = requests.filter(request => {
+                if (filter === 'error') {
+                    return request.type === 'fetch_error';
+                } else if (filter !== 'all') {
+                    return request.method === filter;
+                }
+                return true;
+            });
+
+            const stats = {
+                total: requests.length,
+                successful: requests.filter(r => r.type === 'fetch' && r.status >= 200 && r.status < 300).length,
+                errors: requests.filter(r => r.type === 'fetch_error').length,
+                avgDuration: requests.length > 0 
+                    ? Math.round(
+                        requests
+                            .filter(r => r.duration)
+                            .map(r => parseFloat(r.duration.replace(' ms', '')))
+                            .reduce((a, b) => a + b, 0) / requests.filter(r => r.duration).length
+                    )
+                    : 0
+            };
+
+            return React.createElement('div', { 'data-theme': theme },
+                React.createElement(Header, { 
+                    onToggleTheme: toggleTheme,
+                    onClearAll: clearAllRequests,
+                    theme: theme,
+                    onReconnect: manualReconnect,
+                    connectionError: connectionError
+                }),
+                connectionError && React.createElement('div', { 
+                    className: 'error-banner',
+                    style: {
+                        background: 'var(--error-color)',
+                        color: 'white',
+                        padding: '8px 16px',
+                        textAlign: 'center',
+                        fontSize: '12px',
+                        fontWeight: '500'
+                    }
+                }, connectionError),
+                React.createElement(Toolbar, { 
+                    filter: filter,
+                    onFilterChange: setFilter,
+                    stats: stats,
+                    isConnected: isConnected,
+                    isReconnecting: isReconnecting
+                }),
+                React.createElement(NetworkTable, { 
+                    requests: filteredRequests,
+                    expandedItems: expandedItems,
+                    onToggleExpand: toggleExpand
+                })
+            );
+        }
+
+        // Render the app using React 18 createRoot API
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(App, { wsPort: ${wsPort} }));
     </script>
 </body>
 </html>
