@@ -1,0 +1,7 @@
+{
+  "name": "next-http-server-inspector-test",
+  "version": "0.2.0",
+  "description": "Test package for debugging",
+  "main": "test-package.js",
+  "types": "test-package.d.ts"
+}

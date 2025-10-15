@@ -1,6 +1,6 @@
-# next-telescope
+# next-http-server-inspector
 
-🔭 **Next.js instrumentation toolkit** — captures logs, requests, errors and metrics in real-time during development with a modern React-based UI.
+🔭 **Next Http Server Inspector** — Development-only toolkit that captures logs, requests, errors and metrics in real-time during development with a modern React-based UI.
 
 ## ✨ Features
 
@@ -18,8 +18,10 @@
 
 ## 🚀 Installation
 
+> ⚠️ **Development Only**: This package is designed exclusively for development environments. Do not install in production.
+
 ```bash
-npm install next-telescope
+npm install --save-dev next-http-server-inspector
 ```
 
 ## 📖 Usage
@@ -29,7 +31,7 @@ npm install next-telescope
 1. **Crear archivo de instrumentación** (`instrumentation.ts` en la raíz del proyecto):
 
 ```typescript
-import { setupNextInstrument } from 'next-telescope';
+import { setupNextInstrument } from 'next-http-server-inspector';
 
 export async function register() {
   setupNextInstrument({
@@ -47,7 +49,7 @@ export async function register() {
     }
   });
   
-  console.log('🚀 Next Telescope iniciado!');
+  console.log('🚀 Next Http Server Inspector iniciado!');
   console.log('📊 UI disponible en: http://localhost:3001/ui');
 }
 ```
@@ -74,7 +76,7 @@ npm run dev
 ### Para otros proyectos
 
 ```javascript
-import { setupNextInstrument } from 'next-telescope';
+import { setupNextInstrument } from 'next-http-server-inspector';
 
 const { wsServer, uiServer } = setupNextInstrument({
   logFetch: true,        // Los fetchs se muestran en la UI web
@@ -91,7 +93,7 @@ const { wsServer, uiServer } = setupNextInstrument({
   }
 });
 
-console.log('🚀 Next Telescope iniciado!');
+console.log('🚀 Next Http Server Inspector iniciado!');
 console.log('📊 UI disponible en: http://localhost:3001/ui');
 ```
 
@@ -175,6 +177,14 @@ npm run build
 # Ejecutar ejemplo
 node example.js
 ```
+
+## ⚠️ Production Considerations
+
+- **Development Only**: This package is designed exclusively for development environments
+- **Automatic Detection**: The package automatically detects production environments and skips initialization
+- **No Production Impact**: When `NODE_ENV=production`, the package returns empty objects without starting servers
+- **Security**: Never install this package in production builds
+- **Performance**: Zero performance impact in production environments
 
 ## 📊 UI Features
 

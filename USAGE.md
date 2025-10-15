@@ -4,8 +4,10 @@
 
 ### 1. Installation
 
+> ⚠️ **Development Only**: This package is designed exclusively for development environments. Do not install in production.
+
 ```bash
-npm install next-telescope
+npm install --save-dev next-http-server-inspector
 ```
 
 ### 2. Next.js Setup
@@ -13,7 +15,7 @@ npm install next-telescope
 Create `instrumentation.ts` in your project root:
 
 ```typescript
-import { setupNextInstrument } from 'next-telescope';
+import { setupNextInstrument } from 'next-http-server-inspector';
 
 export async function register() {
   setupNextInstrument({
@@ -31,7 +33,7 @@ export async function register() {
     }
   });
   
-  console.log('🚀 Next Telescope initialized!');
+  console.log('🚀 Next Http Server Inspector initialized!');
   console.log('📊 UI available at: http://localhost:3001/ui');
 }
 ```

@@ -1,524 +1,5 @@
 import { createServer, Server } from 'http';
-
-function getStyle() {
-    return `
-    <style>
-        :root {
-            --bg-primary: #ffffff;
-            --bg-secondary: #f8f9fa;
-            --bg-tertiary: #e9ecef;
-            --text-primary: #212529;
-            --text-secondary: #6c757d;
-            --text-muted: #adb5bd;
-            --border-color: #dee2e6;
-            --accent-color: #007bff;
-            --success-color: #28a745;
-            --warning-color: #ffc107;
-            --error-color: #dc3545;
-            --info-color: #17a2b8;
-            --network-bg: #f5f5f5;
-            --network-border: #d0d0d0;
-            --network-header: #f0f0f0;
-        }
-        
-        [data-theme="dark"] {
-            --bg-primary: #0a0a0a;
-            --bg-secondary: #1a1a1a;
-            --bg-tertiary: #222;
-            --text-primary: #e0e0e0;
-            --text-secondary: #888;
-            --text-muted: #666;
-            --border-color: #333;
-            --accent-color: #00d4ff;
-            --success-color: #4caf50;
-            --warning-color: #ff9800;
-            --error-color: #f44336;
-            --info-color: #2196f3;
-            --network-bg: #1e1e1e;
-            --network-border: #333;
-            --network-header: #2a2a2a;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: var(--network-bg);
-            color: var(--text-primary);
-            padding: 0;
-            margin: 0;
-            font-size: 12px;
-            line-height: 1.4;
-        }
-        
-        .header {
-            background: var(--network-header);
-            border-bottom: 1px solid var(--network-border);
-            padding: 12px 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-        
-        .header h1 {
-            color: var(--text-primary);
-            font-size: 16px;
-            font-weight: 500;
-            margin: 0;
-        }
-        
-        .header-controls {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-        
-        .theme-toggle {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-            padding: 6px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 11px;
-            transition: all 0.2s ease;
-        }
-        
-        .theme-toggle:hover {
-            background: var(--bg-tertiary);
-        }
-        
-        .clear-btn {
-            background: var(--error-color);
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 11px;
-            font-weight: 500;
-            transition: all 0.2s ease;
-        }
-        
-        .clear-btn:hover {
-            background: #c82333;
-        }
-        
-        .clear-btn:disabled {
-            background: var(--text-muted);
-            cursor: not-allowed;
-        }
-        
-        .reconnect-btn {
-            background: var(--warning-color);
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 11px;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            margin-right: 8px;
-        }
-        
-        .reconnect-btn:hover {
-            background: #e0a800;
-        }
-        
-        .toolbar {
-            background: var(--network-header);
-            border-bottom: 1px solid var(--network-border);
-            padding: 8px 16px;
-            display: flex;
-            gap: 16px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        
-        .filters {
-            display: flex;
-            gap: 4px;
-        }
-        
-        .filter-btn {
-            padding: 4px 8px;
-            background: transparent;
-            color: var(--text-primary);
-            border: 1px solid transparent;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 11px;
-            transition: all 0.2s ease;
-        }
-        
-        .filter-btn:hover {
-            background: var(--bg-tertiary);
-        }
-        
-        .filter-btn.active {
-            background: var(--accent-color);
-            color: white;
-            border-color: var(--accent-color);
-        }
-        
-        .stats {
-            display: flex;
-            gap: 16px;
-            align-items: center;
-            margin-left: auto;
-        }
-        
-        .stat-item {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 11px;
-            color: var(--text-secondary);
-        }
-        
-        .stat-number {
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-        
-        .network-table {
-            background: var(--bg-primary);
-            border: 1px solid var(--network-border);
-            border-radius: 0;
-            overflow: hidden;
-        }
-        
-        .network-header {
-            background: var(--network-header);
-            border-bottom: 1px solid var(--network-border);
-            padding: 8px 16px;
-            display: grid;
-            grid-template-columns: 1fr 60px 50px 70px 80px;
-            gap: 16px;
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .network-item {
-            border-bottom: 1px solid var(--network-border);
-            transition: background 0.1s ease;
-        }
-        
-        .network-item:hover {
-            background: var(--bg-tertiary);
-        }
-        
-        .network-item:last-child {
-            border-bottom: none;
-        }
-        
-        .network-row {
-            padding: 8px 16px;
-            display: grid;
-            grid-template-columns: 1fr 60px 50px 70px 80px;
-            gap: 16px;
-            align-items: center;
-            cursor: pointer;
-        }
-        
-        .network-url {
-            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-            font-size: 11px;
-            color: var(--text-primary);
-            word-break: break-all;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .network-method {
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 10px;
-            font-weight: 600;
-            text-align: center;
-            width: 60px;
-        }
-        
-        .method-GET { background: var(--success-color); color: white; }
-        .method-POST { background: var(--warning-color); color: white; }
-        .method-PUT { background: var(--info-color); color: white; }
-        .method-DELETE { background: var(--error-color); color: white; }
-        .method-PATCH { background: #9c27b0; color: white; }
-        
-        .network-status {
-            font-size: 11px;
-            font-weight: 500;
-            text-align: center;
-            width: 50px;
-        }
-        
-        .status-2xx { color: var(--success-color); }
-        .status-3xx { color: var(--warning-color); }
-        .status-4xx { color: var(--error-color); }
-        .status-5xx { color: var(--error-color); }
-        
-        .network-duration {
-            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-            font-size: 11px;
-            color: var(--text-secondary);
-            text-align: right;
-            width: 70px;
-        }
-        
-        .network-time {
-            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-            font-size: 10px;
-            color: var(--text-muted);
-            text-align: right;
-            width: 80px;
-        }
-        
-        .network-details {
-            background: var(--bg-secondary);
-            border-top: 1px solid var(--network-border);
-            padding: 16px;
-        }
-        
-        .details-section {
-            margin-bottom: 16px;
-        }
-        
-        .details-title {
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 8px;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .details-content {
-            background: var(--bg-primary);
-            padding: 12px;
-            border-radius: 4px;
-            border: 1px solid var(--network-border);
-            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-            font-size: 11px;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-        
-        .json-content-container {
-            position: relative;
-        }
-        
-        .json-content {
-            white-space: pre-wrap;
-            word-break: break-word;
-            padding-right: 60px;
-        }
-        
-        .copy-button {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            background: var(--accent-color);
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 3px;
-            font-size: 10px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            opacity: 0.8;
-        }
-        
-        .copy-button:hover {
-            opacity: 1;
-            background: var(--accent-color);
-            transform: scale(1.05);
-        }
-        
-        .copy-button:active {
-            transform: scale(0.95);
-        }
-        
-        .headers-grid {
-            display: grid;
-            grid-template-columns: auto 1fr;
-            gap: 8px;
-        }
-        
-        .header-key {
-            font-weight: 600;
-            color: var(--accent-color);
-        }
-        
-        .header-value {
-            color: var(--text-primary);
-        }
-        
-        .expand-icon {
-            font-size: 10px;
-            color: var(--text-muted);
-            transition: transform 0.2s ease;
-        }
-        
-        .expand-icon.expanded {
-            transform: rotate(90deg);
-        }
-        
-        .no-data {
-            text-align: center;
-            padding: 40px;
-            color: var(--text-secondary);
-            font-size: 14px;
-        }
-        
-        .error-item {
-            background: var(--bg-secondary);
-            border-left: 3px solid var(--error-color);
-        }
-        
-        .error-message {
-            color: var(--error-color);
-            font-weight: 600;
-        }
-        
-        .tabs-container {
-            margin-top: 16px;
-        }
-        
-        .tabs-header {
-            display: flex;
-            border-bottom: 1px solid var(--network-border);
-            margin-bottom: 16px;
-        }
-        
-        .tab-button {
-            background: transparent;
-            border: none;
-            padding: 8px 16px;
-            cursor: pointer;
-            font-size: 11px;
-            font-weight: 500;
-            color: var(--text-secondary);
-            border-bottom: 2px solid transparent;
-            transition: all 0.2s ease;
-        }
-        
-        .tab-button:hover {
-            color: var(--text-primary);
-            background: var(--bg-tertiary);
-        }
-        
-        .tab-button.active {
-            color: var(--accent-color);
-            border-bottom-color: var(--accent-color);
-            background: var(--bg-primary);
-        }
-        
-        .tab-content {
-            display: none;
-        }
-        
-        .tab-content.active {
-            display: block;
-        }
-        
-        .json-viewer {
-            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-            font-size: 11px;
-            line-height: 1.4;
-        }
-        
-        .json-key {
-            color: var(--accent-color);
-            font-weight: 600;
-        }
-        
-        .json-string {
-            color: var(--success-color);
-        }
-        
-        .json-number {
-            color: var(--info-color);
-        }
-        
-        .json-boolean {
-            color: var(--warning-color);
-        }
-        
-        .json-null {
-            color: var(--text-muted);
-            font-style: italic;
-        }
-        
-        .json-toggle {
-            background: none;
-            border: none;
-            cursor: pointer;
-            color: var(--text-muted);
-            font-size: 10px;
-            margin-right: 4px;
-            padding: 0;
-            width: 12px;
-            height: 12px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .json-toggle:hover {
-            color: var(--text-primary);
-        }
-        
-        .json-object {
-            margin-left: 16px;
-        }
-        
-        .json-array {
-            margin-left: 16px;
-        }
-        
-        .json-collapsed {
-            display: none;
-        }
-        
-        .json-expanded {
-            display: block;
-        }
-        
-        .json-bracket {
-            color: var(--text-muted);
-        }
-        
-        .json-comma {
-            color: var(--text-muted);
-        }
-        
-        @media (max-width: 768px) {
-            .network-header,
-            .network-row {
-                grid-template-columns: 1fr;
-                gap: 8px;
-            }
-            
-            .network-method, .network-status, .network-duration, .network-time {
-                text-align: left;
-                width: auto;
-            }
-        }
-    </style>
-    `;
-}
+import { getStyle } from './ui/styles';
 
 export function createUIServer(port: number, path: string = '/ui', wsPort: number = 8080): Server {
   const server = createServer((req, res) => {
@@ -538,23 +19,31 @@ export function createUIServer(port: number, path: string = '/ui', wsPort: numbe
   return server;
 }
 
-function getReactUIHTML(wsPort: number = 8080): string {
+// HTML Template Functions
+function getHTMLHead(wsPort: number): string {
   return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Next Telescope - Network Monitor</title>
+    <title>Next Http Server Inspector - Network Monitor</title>
     ${getStyle()}
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-</head>
-<body>
-    <div id="root"></div>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>`;
+}
 
+function getReactScript(wsPort: number): string {
+  return `
     <script type="text/babel">
+        ${getReactConstants()}
+        ${getCustomHooks()}
+        ${getReactComponents()}
+        ${getMainApp()}
+        ${getAppRenderer(wsPort)}
+    </script>`;
+}
+
+function getReactConstants(): string {
+  return `
         const { useState, useEffect, useCallback } = React;
 
         // Types
@@ -565,8 +54,12 @@ function getReactUIHTML(wsPort: number = 8080): string {
             PUT: 'PUT',
             DELETE: 'DELETE',
             ERROR: 'error'
-        };
+        };`;
+}
 
+// Custom Hooks
+function getCustomHooks(): string {
+  return `
         // Custom Hooks
         function useWebSocket(wsPort, onMessage) {
             const [isConnected, setIsConnected] = useState(false);
@@ -574,6 +67,8 @@ function getReactUIHTML(wsPort: number = 8080): string {
             const [reconnectAttempts, setReconnectAttempts] = useState(0);
             const [isReconnecting, setIsReconnecting] = useState(false);
             const [connectionError, setConnectionError] = useState(null);
+            const [lastConnectionTime, setLastConnectionTime] = useState(null);
+            const [messageCount, setMessageCount] = useState(0);
 
             const connectWebSocket = () => {
                 if (ws && ws.readyState === WebSocket.OPEN) {
@@ -582,23 +77,30 @@ function getReactUIHTML(wsPort: number = 8080): string {
 
                 try {
                     setConnectionError(null);
+                    console.log(\`Attempting to connect to WebSocket on port \${wsPort}...\`);
                     const websocket = new WebSocket(\`ws://localhost:\${wsPort}\`);
                     
                     websocket.onopen = () => {
-                        console.log(\`Connected to WebSocket on port \${wsPort}\`);
+                        console.log(\`✅ Connected to WebSocket on port \${wsPort}\`);
                         setIsConnected(true);
                         setWs(websocket);
                         setReconnectAttempts(0);
                         setIsReconnecting(false);
                         setConnectionError(null);
+                        setLastConnectionTime(new Date().toISOString());
                     };
                     
                     websocket.onmessage = (event) => {
+                        console.log('📨 [WEBSOCKET] Raw message received:', event.data);
+                        setMessageCount(prev => prev + 1);
                         try {
                             const data = JSON.parse(event.data);
+                            console.log('📨 [WEBSOCKET] Parsed message:', data);
+                            console.log('📨 [WEBSOCKET] Total messages received:', messageCount + 1);
                             onMessage(data);
                         } catch (e) {
-                            console.error('Error parsing WebSocket message:', e);
+                            console.error('❌ [WEBSOCKET] Error parsing WebSocket message:', e);
+                            console.error('❌ [WEBSOCKET] Raw data:', event.data);
                         }
                     };
                     
@@ -607,20 +109,20 @@ function getReactUIHTML(wsPort: number = 8080): string {
                         setIsConnected(false);
                         setWs(null);
                         
-                        // Only attempt reconnection if it wasn't a manual close
-                        if (event.code !== 1000 && reconnectAttempts < 5) {
+                        // Only attempt reconnection if it wasn't a manual close and we haven't exceeded max attempts
+                        if (event.code !== 1000 && reconnectAttempts < 10) {
                             setIsReconnecting(true);
-                            const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000); // Max 10 seconds
-                            console.log(\`Attempting to reconnect in \${delay/1000} seconds... (attempt \${reconnectAttempts + 1}/5)\`);
+                            const delay = Math.min(1000 * Math.pow(1.5, reconnectAttempts), 15000); // Max 15 seconds, exponential backoff
+                            console.log(\`🔄 Attempting to reconnect in \${delay/1000} seconds... (attempt \${reconnectAttempts + 1}/10)\`);
                             
                             setTimeout(() => {
                                 setReconnectAttempts(prev => prev + 1);
                                 connectWebSocket();
                             }, delay);
-                        } else if (reconnectAttempts >= 5) {
-                            console.error('Max reconnection attempts reached.');
+                        } else if (reconnectAttempts >= 10) {
+                            console.error('❌ Max reconnection attempts reached.');
                             setIsReconnecting(false);
-                            setConnectionError('Unable to connect to WebSocket server. Make sure the Next.js app is running with instrumentation enabled.');
+                            setConnectionError('Unable to connect to WebSocket server. Make sure the Next.js app is running with instrumentation enabled. Try refreshing the page.');
                         }
                     };
                     
@@ -640,11 +142,47 @@ function getReactUIHTML(wsPort: number = 8080): string {
             };
 
             const manualReconnect = () => {
+                console.log('🔄 Manual reconnection requested...');
+                if (ws) {
+                    ws.close(1000, 'Manual reconnection');
+                }
                 setReconnectAttempts(0);
                 setIsReconnecting(false);
                 setConnectionError(null);
-                connectWebSocket();
+                setTimeout(() => {
+                    connectWebSocket();
+                }, 100);
             };
+
+            // Auto-reconnect on page visibility change (useful for hot reloads)
+            useEffect(() => {
+                const handleVisibilityChange = () => {
+                    if (document.visibilityState === 'visible' && !isConnected && !isReconnecting) {
+                        console.log('🔄 Page became visible, attempting to reconnect...');
+                        manualReconnect();
+                    }
+                };
+
+                document.addEventListener('visibilitychange', handleVisibilityChange);
+                return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+            }, [isConnected, isReconnecting]);
+
+            // Periodic connection check
+            useEffect(() => {
+                const checkConnection = () => {
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        // Send ping to keep connection alive
+                        ws.send(JSON.stringify({ type: 'ping' }));
+                    } else if (!isReconnecting && !connectionError) {
+                        // If not connected and not already trying to reconnect, try to reconnect
+                        console.log('🔄 Connection lost, attempting to reconnect...');
+                        manualReconnect();
+                    }
+                };
+
+                const interval = setInterval(checkConnection, 30000); // Check every 30 seconds
+                return () => clearInterval(interval);
+            }, [ws, isReconnecting, connectionError]);
 
             useEffect(() => {
                 connectWebSocket();
@@ -656,7 +194,7 @@ function getReactUIHTML(wsPort: number = 8080): string {
                 };
             }, [wsPort]);
 
-            return { isConnected, ws, isReconnecting, connectionError, manualReconnect };
+            return { isConnected, ws, isReconnecting, connectionError, manualReconnect, lastConnectionTime, messageCount };
         }
 
         function useTheme() {
@@ -676,18 +214,56 @@ function getReactUIHTML(wsPort: number = 8080): string {
             };
 
             return { theme, toggleTheme };
-        }
+        }`;
+}
 
+// React Components
+function getReactComponents(): string {
+  return `
         // Components
-        function Header({ onToggleTheme, onClearAll, theme, onReconnect, connectionError }) {
+        ${getHeaderComponent()}
+        ${getToolbarComponent()}
+        ${getNetworkItemComponent()}
+        ${getTimelineComponent()}
+        ${getNetworkTableComponent()}`;
+}
+
+function getHeaderComponent(): string {
+  return `
+        function Header({ onToggleTheme, onClearAll, theme, onReconnect, connectionError, isConnected, isReconnecting, lastConnectionTime, messageCount }) {
             return React.createElement('div', { className: 'header' },
-                React.createElement('h1', null, '🔭 Next Telescope'),
+                React.createElement('h1', null, '🔭 Next Http Server Inspector'),
                 React.createElement('div', { className: 'header-controls' },
-                    connectionError && React.createElement('button', { 
+                    React.createElement('div', { 
+                        className: 'connection-status',
+                        style: { 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '8px',
+                            fontSize: '11px',
+                            color: 'var(--text-secondary)'
+                        }
+                    },
+                        React.createElement('span', { 
+                            style: { 
+                                color: isConnected ? 'var(--success-color)' : 
+                                       isReconnecting ? 'var(--warning-color)' : 'var(--error-color)' 
+                            }
+                        }, isConnected ? '🟢' : isReconnecting ? '🟡' : '🔴'),
+                        React.createElement('span', null, isConnected ? 'connected' : isReconnecting ? 'reconnecting...' : 'disconnected'),
+                        lastConnectionTime && isConnected && React.createElement('span', { 
+                            style: { fontSize: '10px', opacity: 0.7 }
+                        }, \`(\${new Date(lastConnectionTime).toLocaleTimeString()})\`),
+                        React.createElement('span', { 
+                            style: { fontSize: '10px', opacity: 0.7, marginLeft: '8px' }
+                        }, \`Messages: \${messageCount}\`)
+                    ),
+                    (connectionError || !isConnected) && React.createElement('button', { 
                         className: 'reconnect-btn', 
                         onClick: onReconnect,
-                        title: 'Reconnect to WebSocket'
-                    }, '🔄 Reconnect'),
+                        title: 'Reconnect to WebSocket',
+                        disabled: isReconnecting
+                    }, isReconnecting ? '⏳' : '🔄 Reconnect'),
                     React.createElement('button', { 
                         className: 'theme-toggle', 
                         onClick: onToggleTheme 
@@ -698,8 +274,11 @@ function getReactUIHTML(wsPort: number = 8080): string {
                     }, '🗑️ Clear All')
                 )
             );
-        }
+        }`;
+}
 
+function getToolbarComponent(): string {
+  return `
         function Toolbar({ filter, onFilterChange, stats, isConnected, isReconnecting }) {
             const filters = ['all', 'GET', 'POST', 'PUT', 'DELETE', 'error'];
 
@@ -729,6 +308,10 @@ function getReactUIHTML(wsPort: number = 8080): string {
                         React.createElement('span', null, 'avg time')
                     ),
                     React.createElement('div', { className: 'stat-item' },
+                        React.createElement('span', { className: 'stat-number' }, \`\${stats.totalDuration}ms\`),
+                        React.createElement('span', null, 'total time')
+                    ),
+                    React.createElement('div', { className: 'stat-item' },
                         React.createElement('span', { className: 'stat-number' }, stats.errors),
                         React.createElement('span', null, 'errors')
                     ),
@@ -744,8 +327,11 @@ function getReactUIHTML(wsPort: number = 8080): string {
                     )
                 )
             );
-        }
+        }`;
+}
 
+function getNetworkItemComponent(): string {
+  return `
         function NetworkItem({ request, isExpanded, onToggleExpand }) {
             const [activeTab, setActiveTab] = React.useState('details');
             
@@ -760,6 +346,115 @@ function getReactUIHTML(wsPort: number = 8080): string {
                 });
             };
 
+            ${getJsonValueComponent()}
+            ${getRequestDetailsRenderer()}
+            ${getResponseBodyRenderer()}
+
+            if (request.type === 'fetch_error') {
+                return React.createElement('div', { 
+                    className: 'network-item error-item', 
+                    'data-id': request.id 
+                },
+                    React.createElement('div', { 
+                        className: 'network-row', 
+                        onClick: () => onToggleExpand(request.id) 
+                    },
+                        React.createElement('div', { className: 'network-url' },
+                            React.createElement('span', { 
+                                className: \`expand-icon \${isExpanded ? 'expanded' : ''}\` 
+                            }, '▶'),
+                            React.createElement('span', null, request.url)
+                        ),
+                        React.createElement('div', { 
+                            className: \`network-method method-\${request.method} error\` 
+                        }, request.method),
+                        React.createElement('div', { 
+                            className: 'network-status', 
+                            style: { color: 'var(--error-color)' } 
+                        }, 'ERROR'),
+                        React.createElement('div', { className: 'network-duration' }, request.duration),
+                        React.createElement('div', { className: 'network-time' }, formatTime(request.startDate))
+                    ),
+                    isExpanded && React.createElement('div', { className: 'network-details' },
+                        React.createElement('div', { className: 'error-message' }, \`Error: \${request.error}\`),
+                        React.createElement('div', { className: 'tabs-container' },
+                            React.createElement('div', { className: 'tabs-header' },
+                                React.createElement('button', {
+                                    className: \`tab-button \${activeTab === 'details' ? 'active' : ''}\`,
+                                    onClick: () => setActiveTab('details')
+                                }, 'Details')
+                            ),
+                            React.createElement('div', { 
+                                className: \`tab-content \${activeTab === 'details' ? 'active' : ''}\`
+                            },
+                                React.createElement('div', { 
+                                    dangerouslySetInnerHTML: { __html: renderRequestDetails(request) } 
+                                })
+                            )
+                        )
+                    )
+                );
+            }
+
+            const statusClass = request.status && request.status >= 200 && request.status < 300 ? 'status-2xx' :
+                              request.status && request.status >= 300 && request.status < 400 ? 'status-3xx' :
+                              request.status && request.status >= 400 && request.status < 500 ? 'status-4xx' : 'status-5xx';
+
+            return React.createElement('div', { 
+                className: 'network-item', 
+                'data-id': request.id 
+            },
+                React.createElement('div', { 
+                    className: 'network-row', 
+                    onClick: () => onToggleExpand(request.id) 
+                },
+                    React.createElement('div', { className: 'network-url' },
+                        React.createElement('span', { 
+                            className: \`expand-icon \${isExpanded ? 'expanded' : ''}\` 
+                        }, '▶'),
+                        React.createElement('span', null, request.url)
+                    ),
+                    React.createElement('div', { 
+                        className: \`network-method method-\${request.method}\${request.status && request.status >= 400 ? ' error' : ''}\` 
+                    }, request.method),
+                    React.createElement('div', { 
+                        className: \`network-status \${statusClass}\` 
+                    }, request.status),
+                    React.createElement('div', { className: 'network-duration' }, request.duration),
+                    React.createElement('div', { className: 'network-time' }, formatTime(request.startDate))
+                ),
+                isExpanded && React.createElement('div', { className: 'network-details' },
+                    React.createElement('div', { className: 'tabs-container' },
+                        React.createElement('div', { className: 'tabs-header' },
+                            React.createElement('button', {
+                                className: \`tab-button \${activeTab === 'details' ? 'active' : ''}\`,
+                                onClick: () => setActiveTab('details')
+                            }, 'Details'),
+                            React.createElement('button', {
+                                className: \`tab-button \${activeTab === 'response' ? 'active' : ''}\`,
+                                onClick: () => setActiveTab('response')
+                            }, 'Response Body')
+                        ),
+                        React.createElement('div', { 
+                            className: \`tab-content \${activeTab === 'details' ? 'active' : ''}\`
+                        },
+                            React.createElement('div', { 
+                                dangerouslySetInnerHTML: { __html: renderRequestDetails(request) } 
+                            })
+                        ),
+                        React.createElement('div', { 
+                            className: \`tab-content \${activeTab === 'response' ? 'active' : ''}\`
+                        },
+                            renderResponseBody(request)
+                        )
+                    )
+                )
+            );
+        }`;
+}
+
+function getJsonValueComponent(): string {
+  return `
             const JsonValue = ({ value, level = 0 }) => {
                 const [isExpanded, setIsExpanded] = React.useState(level < 2);
                 const toggleExpanded = () => setIsExpanded(!isExpanded);
@@ -833,8 +528,11 @@ function getReactUIHTML(wsPort: number = 8080): string {
                 }
                 
                 return React.createElement('span', null, String(value));
-            };
+            };`;
+}
 
+function getRequestDetailsRenderer(): string {
+  return `
             const renderRequestDetails = (request) => {
                 let details = '';
                 
@@ -914,8 +612,11 @@ function getReactUIHTML(wsPort: number = 8080): string {
                 }
                 
                 return details;
-            };
+            };`;
+}
 
+function getResponseBodyRenderer(): string {
+  return `
             const renderResponseBody = (request) => {
                 if (!request.responseBody) {
                     return React.createElement('div', { className: 'no-data' }, 'No response body');
@@ -939,110 +640,225 @@ function getReactUIHTML(wsPort: number = 8080): string {
                         )
                     );
                 }
-            };
+            };`;
+}
 
-            if (request.type === 'fetch_error') {
-                return React.createElement('div', { 
-                    className: 'network-item error-item', 
-                    'data-id': request.id 
-                },
-                    React.createElement('div', { 
-                        className: 'network-row', 
-                        onClick: () => onToggleExpand(request.id) 
-                    },
-                        React.createElement('div', { className: 'network-url' },
-                            React.createElement('span', { 
-                                className: \`expand-icon \${isExpanded ? 'expanded' : ''}\` 
-                            }, '▶'),
-                            React.createElement('span', null, request.url)
-                        ),
-                        React.createElement('div', { 
-                            className: \`network-method method-\${request.method}\` 
-                        }, request.method),
-                        React.createElement('div', { 
-                            className: 'network-status', 
-                            style: { color: 'var(--error-color)' } 
-                        }, 'ERROR'),
-                        React.createElement('div', { className: 'network-duration' }, request.duration),
-                        React.createElement('div', { className: 'network-time' }, formatTime(request.startDate))
-                    ),
-                    isExpanded && React.createElement('div', { className: 'network-details' },
-                        React.createElement('div', { className: 'error-message' }, \`Error: \${request.error}\`),
-                        React.createElement('div', { className: 'tabs-container' },
-                            React.createElement('div', { className: 'tabs-header' },
-                                React.createElement('button', {
-                                    className: \`tab-button \${activeTab === 'details' ? 'active' : ''}\`,
-                                    onClick: () => setActiveTab('details')
-                                }, 'Details')
-                            ),
-                            React.createElement('div', { 
-                                className: \`tab-content \${activeTab === 'details' ? 'active' : ''}\`
-                            },
-                                React.createElement('div', { 
-                                    dangerouslySetInnerHTML: { __html: renderRequestDetails(request) } 
-                                })
+function getTimelineComponent(): string {
+  return `
+        function Timeline({ requests, expandedItems, onRequestClick, selectedRequestId }) {
+            const [zoom, setZoom] = React.useState(1);
+            const [timeRange, setTimeRange] = React.useState({ start: 0, end: 10000 });
+            
+            const calculateTimelineData = () => {
+                if (requests.length === 0) return { requests: [], timeRange: { start: 0, end: 10000 } };
+                
+                const now = Date.now();
+                const startTime = Math.min(...requests.map(r => new Date(r.startDate).getTime()));
+                const endTime = Math.max(...requests.map(r => {
+                    const end = r.endDate ? new Date(r.endDate).getTime() : now;
+                    return end;
+                }));
+                
+                const totalDuration = endTime - startTime;
+                const timelineWidth = 600; // Base width for the track
+                const actualWidth = timelineWidth * zoom;
+                
+                const timelineRequests = requests.map(request => {
+                    const requestStart = new Date(request.startDate).getTime();
+                    const requestEnd = request.endDate ? new Date(request.endDate).getTime() : now;
+                    const requestDuration = requestEnd - requestStart;
+                    
+                    const left = totalDuration > 0 ? ((requestStart - startTime) / totalDuration) * actualWidth : 0;
+                    const width = totalDuration > 0 ? Math.max((requestDuration / totalDuration) * actualWidth, 2) : 2;
+                    
+                    return {
+                        ...request,
+                        left: left,
+                        width: width,
+                        duration: requestDuration,
+                        startTime: requestStart,
+                        endTime: requestEnd
+                    };
+                });
+                
+                return {
+                    requests: timelineRequests,
+                    timeRange: { start: startTime, end: endTime },
+                    totalDuration,
+                    actualWidth
+                };
+            };
+            
+            const { requests: timelineRequests, timeRange: calculatedTimeRange, totalDuration, actualWidth } = calculateTimelineData();
+            
+            const getRequestClass = (request) => {
+                if (request.type === 'fetch_error') return 'error';
+                
+                const method = request.method?.toLowerCase();
+                const isError = request.status && (request.status >= 400);
+                
+                let baseClass = '';
+                switch (method) {
+                    case 'get': baseClass = 'success'; break;
+                    case 'post': baseClass = 'warning'; break;
+                    case 'put': baseClass = 'info'; break;
+                    case 'delete': baseClass = 'delete'; break;
+                    case 'patch': baseClass = 'purple'; break;
+                    default: baseClass = 'success';
+                }
+                
+                return isError ? 'error' : baseClass;
+            };
+            
+            const formatDuration = (ms) => {
+                if (ms < 1000) return ms + 'ms';
+                return (ms / 1000).toFixed(1) + 's';
+            };
+            
+            const handleZoomIn = () => {
+                setZoom(prev => Math.min(prev * 1.5, 5));
+            };
+            
+            const handleZoomOut = () => {
+                setZoom(prev => Math.max(prev / 1.5, 0.1));
+            };
+            
+            const handleResetZoom = () => {
+                setZoom(1);
+            };
+            
+            if (requests.length === 0) {
+                return React.createElement('div', { className: 'timeline-container' },
+                    React.createElement('div', { className: 'timeline-header' },
+                        React.createElement('div', { className: 'timeline-title' }, 'Timeline'),
+                        React.createElement('div', { className: 'timeline-controls' },
+                            React.createElement('div', { className: 'timeline-zoom' },
+                                React.createElement('button', { 
+                                    className: 'timeline-zoom-btn', 
+                                    onClick: handleZoomOut,
+                                    disabled: zoom <= 0.1
+                                }, '−'),
+                                React.createElement('span', { style: { fontSize: '10px', color: 'var(--text-secondary)' } }, Math.round(zoom * 100) + '%'),
+                                React.createElement('button', { 
+                                    className: 'timeline-zoom-btn', 
+                                    onClick: handleZoomIn,
+                                    disabled: zoom >= 5
+                                }, '+'),
+                                React.createElement('button', { 
+                                    className: 'timeline-zoom-btn', 
+                                    onClick: handleResetZoom
+                                }, 'Reset')
                             )
+                        )
+                    ),
+                    React.createElement('div', { className: 'timeline-viewport' },
+                        React.createElement('div', { 
+                            className: 'timeline-track',
+                            style: { width: '100%' }
+                        },
+                            React.createElement('div', { 
+                                style: { 
+                                    textAlign: 'center', 
+                                    color: 'var(--text-muted)', 
+                                    fontSize: '11px',
+                                    paddingTop: '12px'
+                                } 
+                            }, 'Waiting for requests...')
                         )
                     )
                 );
             }
-
-            const statusClass = request.status && request.status >= 200 && request.status < 300 ? 'status-2xx' :
-                              request.status && request.status >= 300 && request.status < 400 ? 'status-3xx' :
-                              request.status && request.status >= 400 && request.status < 500 ? 'status-4xx' : 'status-5xx';
-
-            return React.createElement('div', { 
-                className: 'network-item', 
-                'data-id': request.id 
-            },
-                React.createElement('div', { 
-                    className: 'network-row', 
-                    onClick: () => onToggleExpand(request.id) 
-                },
-                    React.createElement('div', { className: 'network-url' },
-                        React.createElement('span', { 
-                            className: \`expand-icon \${isExpanded ? 'expanded' : ''}\` 
-                        }, '▶'),
-                        React.createElement('span', null, request.url)
-                    ),
-                    React.createElement('div', { 
-                        className: \`network-method method-\${request.method}\` 
-                    }, request.method),
-                    React.createElement('div', { 
-                        className: \`network-status \${statusClass}\` 
-                    }, request.status),
-                    React.createElement('div', { className: 'network-duration' }, request.duration),
-                    React.createElement('div', { className: 'network-time' }, formatTime(request.startDate))
-                ),
-                isExpanded && React.createElement('div', { className: 'network-details' },
-                    React.createElement('div', { className: 'tabs-container' },
-                        React.createElement('div', { className: 'tabs-header' },
-                            React.createElement('button', {
-                                className: \`tab-button \${activeTab === 'details' ? 'active' : ''}\`,
-                                onClick: () => setActiveTab('details')
-                            }, 'Details'),
-                            React.createElement('button', {
-                                className: \`tab-button \${activeTab === 'response' ? 'active' : ''}\`,
-                                onClick: () => setActiveTab('response')
-                            }, 'Response Body')
-                        ),
-                        React.createElement('div', { 
-                            className: \`tab-content \${activeTab === 'details' ? 'active' : ''}\`
-                        },
-                            React.createElement('div', { 
-                                dangerouslySetInnerHTML: { __html: renderRequestDetails(request) } 
-                            })
-                        ),
-                        React.createElement('div', { 
-                            className: \`tab-content \${activeTab === 'response' ? 'active' : ''}\`
-                        },
-                            renderResponseBody(request)
+            
+            return React.createElement('div', { className: 'timeline-container' },
+                React.createElement('div', { className: 'timeline-header' },
+                    React.createElement('div', { className: 'timeline-title' }, 'Timeline'),
+                    React.createElement('div', { className: 'timeline-controls' },
+                        React.createElement('div', { className: 'timeline-zoom' },
+                            React.createElement('button', { 
+                                className: 'timeline-zoom-btn', 
+                                onClick: handleZoomOut,
+                                disabled: zoom <= 0.1
+                            }, '−'),
+                            React.createElement('span', { style: { fontSize: '10px', color: 'var(--text-secondary)' } }, Math.round(zoom * 100) + '%'),
+                            React.createElement('button', { 
+                                className: 'timeline-zoom-btn', 
+                                onClick: handleZoomIn,
+                                disabled: zoom >= 5
+                            }, '+'),
+                            React.createElement('button', { 
+                                className: 'timeline-zoom-btn', 
+                                onClick: handleResetZoom
+                            }, 'Reset')
                         )
+                    )
+                ),
+                React.createElement('div', { className: 'timeline-viewport' },
+                    React.createElement('div', { 
+                        className: 'timeline-track',
+                        style: { width: Math.max(actualWidth, 600) + 'px' }
+                    },
+                        ...timelineRequests.map(request => 
+                            React.createElement('div', {
+                                key: request.id,
+                                className: 'timeline-row ' + (selectedRequestId === request.id ? 'selected' : ''),
+                                onClick: () => onRequestClick(request.id)
+                            },
+                                React.createElement('div', { className: 'timeline-row-label' },
+                                    request.method + ' ' + request.url.split('/').pop()
+                                ),
+                                React.createElement('div', { className: 'timeline-row-track' },
+                                    React.createElement('div', {
+                                        className: 'timeline-request ' + getRequestClass(request),
+                                        style: {
+                                            left: request.left + 'px',
+                                            width: request.width + 'px'
+                                        },
+                                        title: request.method + ' ' + request.url + ' - ' + formatDuration(request.duration)
+                                    },
+                                        React.createElement('div', { className: 'timeline-request-label' },
+                                            request.width > 30 ? request.method : ''
+                                        )
+                                    )
+                                ),
+                                React.createElement('div', { className: 'timeline-row-duration' },
+                                    formatDuration(request.duration)
+                                )
+                            )
+                        )
+                    )
+                ),
+                React.createElement('div', { className: 'timeline-legend' },
+                    React.createElement('div', { className: 'timeline-legend-item' },
+                        React.createElement('div', { className: 'timeline-legend-color get' }),
+                        React.createElement('span', null, 'GET')
+                    ),
+                    React.createElement('div', { className: 'timeline-legend-item' },
+                        React.createElement('div', { className: 'timeline-legend-color post' }),
+                        React.createElement('span', null, 'POST')
+                    ),
+                    React.createElement('div', { className: 'timeline-legend-item' },
+                        React.createElement('div', { className: 'timeline-legend-color put' }),
+                        React.createElement('span', null, 'PUT')
+                    ),
+                    React.createElement('div', { className: 'timeline-legend-item' },
+                        React.createElement('div', { className: 'timeline-legend-color delete' }),
+                        React.createElement('span', null, 'DELETE')
+                    ),
+                    React.createElement('div', { className: 'timeline-legend-item' },
+                        React.createElement('div', { className: 'timeline-legend-color patch' }),
+                        React.createElement('span', null, 'PATCH')
+                    ),
+                    React.createElement('div', { className: 'timeline-legend-item' },
+                        React.createElement('div', { className: 'timeline-legend-color error' }),
+                        React.createElement('span', null, 'ERROR')
                     )
                 )
             );
-        }
+        }`;
+}
 
+function getNetworkTableComponent(): string {
+  return `
         function NetworkTable({ requests, expandedItems, onToggleExpand }) {
             if (requests.length === 0) {
                 return React.createElement('div', { className: 'network-table' },
@@ -1076,29 +892,91 @@ function getReactUIHTML(wsPort: number = 8080): string {
                     )
                 )
             );
-        }
+        }`;
+}
 
+function getMainApp(): string {
+  return `
         function App({ wsPort }) {
-            const [requests, setRequests] = useState([]);
+            // Cargar datos persistidos del localStorage al inicializar
+            const loadPersistedRequests = () => {
+                try {
+                    const saved = localStorage.getItem('next-telescope-requests');
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        console.log('🔄 [UI] Restoring persisted requests:', parsed.length);
+                        return parsed;
+                    }
+                } catch (e) {
+                    console.warn('⚠️ [UI] Failed to load persisted requests:', e);
+                }
+                return [];
+            };
+
+            const [requests, setRequests] = useState(loadPersistedRequests);
             const [filter, setFilter] = useState('all');
             const [expandedItems, setExpandedItems] = useState(new Set());
+            const [selectedRequestId, setSelectedRequestId] = useState(null);
+            const [showRestoreMessage, setShowRestoreMessage] = useState(false);
             
             const { theme, toggleTheme } = useTheme();
-            const { isConnected, isReconnecting, connectionError, manualReconnect } = useWebSocket(wsPort, (data) => {
+            
+            // Detectar hot reload y mostrar información
+            useEffect(() => {
+                const persistedRequests = loadPersistedRequests();
+                if (persistedRequests.length > 0) {
+                    console.log('🔄 [UI] Hot reload detected - restored', persistedRequests.length, 'requests from localStorage');
+                    setShowRestoreMessage(true);
+                    // Ocultar el mensaje después de 5 segundos
+                    setTimeout(() => setShowRestoreMessage(false), 5000);
+                }
+            }, []);
+
+            const { isConnected, isReconnecting, connectionError, manualReconnect, lastConnectionTime, messageCount } = useWebSocket(wsPort, (data) => {
+                console.log('🔍 [UI] WebSocket message received:', data);
+                console.log('🔍 [UI] Message type:', data.type);
+                console.log('🔍 [UI] Message payload:', data.payload);
+                
                 if (data.type === 'fetch' || data.type === 'fetch_error') {
+                    console.log('✅ [UI] Processing fetch message');
                     const request = {
                         ...data.payload,
                         type: data.type,
                         id: data.payload.id || 'req_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
                     };
                     
-                    setRequests(prev => [...prev, request]);
+                    console.log('📝 [UI] Created request object:', request);
+                    
+                    setRequests(prev => {
+                        console.log('📊 [UI] Current requests count:', prev.length);
+                        const newRequests = [...prev, request];
+                        console.log('📊 [UI] New requests count:', newRequests.length);
+                        
+                        // Persistir en localStorage
+                        try {
+                            localStorage.setItem('next-telescope-requests', JSON.stringify(newRequests));
+                            console.log('💾 [UI] Persisted requests to localStorage:', newRequests.length);
+                        } catch (e) {
+                            console.warn('⚠️ [UI] Failed to persist requests:', e);
+                        }
+                        return newRequests;
+                    });
+                } else {
+                    console.log('⚠️ [UI] Unknown message type:', data.type);
                 }
             });
 
             const clearAllRequests = useCallback(() => {
                 setRequests([]);
                 setExpandedItems(new Set());
+                setSelectedRequestId(null);
+                // Limpiar también el localStorage
+                try {
+                    localStorage.removeItem('next-telescope-requests');
+                    console.log('🗑️ [UI] Cleared persisted requests from localStorage');
+                } catch (e) {
+                    console.warn('⚠️ [UI] Failed to clear persisted requests:', e);
+                }
             }, []);
 
             const toggleExpand = useCallback((requestId) => {
@@ -1106,9 +984,21 @@ function getReactUIHTML(wsPort: number = 8080): string {
                     const newSet = new Set(prev);
                     if (newSet.has(requestId)) {
                         newSet.delete(requestId);
+                        setSelectedRequestId(null);
                     } else {
                         newSet.add(requestId);
+                        setSelectedRequestId(requestId);
                     }
+                    return newSet;
+                });
+            }, []);
+
+            const handleRequestClick = useCallback((requestId) => {
+                setSelectedRequestId(requestId);
+                // Auto-expand the clicked request
+                setExpandedItems(prev => {
+                    const newSet = new Set(prev);
+                    newSet.add(requestId);
                     return newSet;
                 });
             }, []);
@@ -1122,6 +1012,15 @@ function getReactUIHTML(wsPort: number = 8080): string {
                 return true;
             });
 
+            // Debug logging para el estado de la UI (solo cuando cambia)
+            useEffect(() => {
+                console.log('🔍 [UI] State updated:');
+                console.log('🔍 [UI] - Total requests:', requests.length);
+                console.log('🔍 [UI] - Filtered requests:', filteredRequests.length);
+                console.log('🔍 [UI] - Filter:', filter);
+                console.log('🔍 [UI] - Is connected:', isConnected);
+            }, [requests.length, filteredRequests.length, filter, isConnected]);
+
             const stats = {
                 total: requests.length,
                 successful: requests.filter(r => r.type === 'fetch' && r.status >= 200 && r.status < 300).length,
@@ -1133,7 +1032,11 @@ function getReactUIHTML(wsPort: number = 8080): string {
                             .map(r => parseFloat(r.duration.replace(' ms', '')))
                             .reduce((a, b) => a + b, 0) / requests.filter(r => r.duration).length
                     )
-                    : 0
+                    : 0,
+                totalDuration: Math.round(requests
+                    .filter(r => r.duration)
+                    .map(r => parseFloat(r.duration.replace(' ms', '')))
+                    .reduce((a, b) => a + b, 0))
             };
 
             return React.createElement('div', { 'data-theme': theme },
@@ -1142,7 +1045,11 @@ function getReactUIHTML(wsPort: number = 8080): string {
                     onClearAll: clearAllRequests,
                     theme: theme,
                     onReconnect: manualReconnect,
-                    connectionError: connectionError
+                    connectionError: connectionError,
+                    isConnected: isConnected,
+                    isReconnecting: isReconnecting,
+                    lastConnectionTime: lastConnectionTime,
+                    messageCount: messageCount
                 }),
                 connectionError && React.createElement('div', { 
                     className: 'error-banner',
@@ -1155,6 +1062,17 @@ function getReactUIHTML(wsPort: number = 8080): string {
                         fontWeight: '500'
                     }
                 }, connectionError),
+                showRestoreMessage && React.createElement('div', { 
+                    className: 'restore-banner',
+                    style: {
+                        background: 'var(--success-color)',
+                        color: 'white',
+                        padding: '8px 16px',
+                        textAlign: 'center',
+                        fontSize: '12px',
+                        fontWeight: '500'
+                    }
+                }, \`🔄 Restored \${requests.length} requests from previous session\`),
                 React.createElement(Toolbar, { 
                     filter: filter,
                     onFilterChange: setFilter,
@@ -1162,18 +1080,38 @@ function getReactUIHTML(wsPort: number = 8080): string {
                     isConnected: isConnected,
                     isReconnecting: isReconnecting
                 }),
+                React.createElement(Timeline, { 
+                    requests: filteredRequests,
+                    expandedItems: expandedItems,
+                    onRequestClick: handleRequestClick,
+                    selectedRequestId: selectedRequestId
+                }),
                 React.createElement(NetworkTable, { 
                     requests: filteredRequests,
                     expandedItems: expandedItems,
                     onToggleExpand: toggleExpand
                 })
             );
-        }
+        }`;
+}
 
+function getAppRenderer(wsPort: number): string {
+  return `
         // Render the app using React 18 createRoot API
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(React.createElement(App, { wsPort: ${wsPort} }));
-    </script>
+        root.render(React.createElement(App, { wsPort: ${wsPort} }));`;
+}
+
+function getReactUIHTML(wsPort: number = 8080): string {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    ${getHTMLHead(wsPort)}
+</head>
+<body>
+    <div id="root"></div>
+    ${getReactScript(wsPort)}
 </body>
 </html>
   `;

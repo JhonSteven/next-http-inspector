@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [0.2.0] - 2024-12-19
 
 ### ✨ Added
+- **Project Renamed**: Changed from `next-telescope` to `next-http-server-inspector` (Next Http Server Inspector)
 - **Tabbed Interface**: Request details now organized in two tabs:
   - **Details Tab**: URL breakdown, request headers, response headers, timing information
   - **Response Body Tab**: Dedicated tab for response body with interactive JSON viewer

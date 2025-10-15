@@ -1,7 +1,7 @@
 {
-    "name": "next-telescope",
+    "name": "next-http-server-inspector",
     "version": "0.2.0",
-    "description": "Toolkit de instrumentación para Next.js con logging, interceptores y WebSocket para monitoreo en tiempo real.",
+    "description": "Next Http Server Inspector - Development toolkit for Next.js with logging, interceptors and WebSocket for real-time monitoring (dev-only).",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "scripts": {
@@ -9,14 +9,31 @@
         "dev": "tsc --watch",
         "prepublishOnly": "npm run build"
     },
+    "engines": {
+        "node": ">=16.0.0"
+    },
     "author": "Jhon Parra",
     "license": "MIT",
     "dependencies": {
+        "@types/react": "^19.2.2",
+        "@types/react-dom": "^19.2.2",
+        "react": "^19.2.0",
+        "react-dom": "^19.2.0",
         "ws": "^8.16.0"
     },
     "devDependencies": {
+        "@babel/core": "^7.28.4",
+        "@babel/preset-react": "^7.27.1",
         "@types/ws": "^8.18.1",
-        "typescript": "^5.3.3"
+        "babel-loader": "^10.0.0",
+        "css-loader": "^7.1.2",
+        "html-webpack-plugin": "^5.6.4",
+        "style-loader": "^4.0.0",
+        "ts-loader": "^9.5.4",
+        "typescript": "^5.3.3",
+        "webpack": "^5.102.1",
+        "webpack-cli": "^6.0.1",
+        "webpack-dev-server": "^5.2.2"
     },
     "keywords": [
         "nextjs",
@@ -25,6 +42,16 @@
         "monitoring",
         "websocket",
         "debug",
-        "telemetry"
-    ]
+        "telemetry",
+        "development",
+        "dev-tools"
+    ],
+    "peerDependencies": {
+        "next": ">=13.0.0"
+    },
+    "peerDependenciesMeta": {
+        "next": {
+            "optional": false
+        }
+    }
 }

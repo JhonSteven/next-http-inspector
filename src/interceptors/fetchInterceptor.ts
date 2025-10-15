@@ -1,4 +1,4 @@
-import { sendWS } from './../wsServer';
+import { sendWS, getGlobalWsServer } from './../wsServer';
 import type { WebSocketServer } from 'ws';
 
 // Helper function to extract request headers
@@ -103,7 +103,13 @@ export function interceptFetch(
   wsServer: WebSocketServer | undefined,
   fetchGroupInterval: number = 20000
 ) {
-  if (typeof global.fetch !== 'function') return;
+  if (typeof global.fetch !== 'function') {
+    console.log('❌ [FETCH_INTERCEPTOR] Global fetch not available');
+    return;
+  }
+
+  console.log('🔧 [FETCH_INTERCEPTOR] Setting up fetch interceptor');
+  console.log('🔧 [FETCH_INTERCEPTOR] WebSocket server available:', !!wsServer);
 
   const originalFetch = global.fetch;
   const fetchLogs: any[] = [];
@@ -118,8 +124,11 @@ export function interceptFetch(
     // Create a unique request identifier to prevent duplicates
     const requestId = `${url}_${options.method || 'GET'}_${startTime}`;
     
+    console.log(`🌐 [FETCH_INTERCEPTOR] Intercepting fetch request: ${options.method || 'GET'} ${url}`);
+    
     // Skip if this request was already processed
     if (processedRequests.has(requestId)) {
+      console.log(`⏭️ [FETCH_INTERCEPTOR] Skipping duplicate request: ${requestId}`);
       return originalFetch(...args);
     }
     
@@ -130,6 +139,8 @@ export function interceptFetch(
       const endTime = performance.now();
       const endDate = new Date();
       const duration = endTime - startTime;
+
+      console.log(`✅ [FETCH_INTERCEPTOR] Request completed: ${res.status} ${res.statusText} (${duration.toFixed(2)}ms)`);
 
       // Extract response headers
       const responseHeaders: Record<string, string> = {};
@@ -152,13 +163,19 @@ export function interceptFetch(
       };
 
       fetchLogs.push(info);
-      sendWS(wsServer, { type: 'fetch', payload: info });
+      
+      // Usar el servidor WebSocket global si está disponible
+      const currentWsServer = wsServer || getGlobalWsServer() || undefined;
+      console.log(`📤 [FETCH_INTERCEPTOR] Sending fetch data via WebSocket. Server available: ${!!currentWsServer}`);
+      sendWS(currentWsServer, { type: 'fetch', payload: info });
 
       return res;
     } catch (error: any) {
       const endTime = performance.now();
       const endDate = new Date();
       const duration = endTime - startTime;
+
+      console.log(`❌ [FETCH_INTERCEPTOR] Request failed: ${error.message} (${duration.toFixed(2)}ms)`);
 
       const errInfo = {
         ...createBaseRequestInfo(url, options, startTime, startDate),
@@ -169,7 +186,11 @@ export function interceptFetch(
       };
 
       fetchLogs.push(errInfo);
-      sendWS(wsServer, { type: 'fetch_error', payload: errInfo });
+      
+      // Usar el servidor WebSocket global si está disponible
+      const currentWsServer = wsServer || getGlobalWsServer() || undefined;
+      console.log(`📤 [FETCH_INTERCEPTOR] Sending fetch error via WebSocket. Server available: ${!!currentWsServer}`);
+      sendWS(currentWsServer, { type: 'fetch_error', payload: errInfo });
       throw error;
     } finally {
       // Clean up the request ID after a delay to allow for retries
