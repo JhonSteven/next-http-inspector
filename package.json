@@ -1,16 +1,22 @@
 {
     "name": "next-http-inspector",
-    "version": "0.2.2",
+    "version": "0.2.3",
     "description": "Next Http Inspector - Interceptors for Next.js with WebSocket logging and monitoring (dev-only).",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "browser": {
+        "crypto": false,
         "http": false,
+        "https": false,
         "ws": false,
         "fs": false,
         "path": false,
         "url": false,
-        "util": false
+        "util": false,
+        "stream": false,
+        "events": false,
+        "net": false,
+        "tls": false
     },
     "scripts": {
         "build": "webpack --config webpack.config.js",

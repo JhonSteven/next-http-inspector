@@ -1,5 +1,3 @@
-import type { WebSocketServer } from 'ws';
-
 // Type declaration for global state
 declare global {
   var __next_http_inspector_fetch_interceptor__: {
@@ -122,7 +120,8 @@ function getInterceptorState() {
 
 export function interceptFetch(
   sendWS: (data: any) => void,
-  fetchGroupInterval: number = 20000
+  fetchGroupInterval: number = 20000,
+  httpConfig?: { host: string; port: number; endpoint: string } | null
 ) {
   if (typeof globalThis.fetch !== 'function') {
     console.log('❌ [FETCH_INTERCEPTOR] Global fetch not available');
@@ -166,6 +165,19 @@ export function interceptFetch(
       return state.originalFetch!(...args);
     }
     
+    // Skip HTTP requests to the log server to prevent infinite loops
+    if (httpConfig && typeof url === 'string') {
+      const urlObj = new URL(url);
+      const isLogServerRequest = urlObj.hostname === httpConfig.host && 
+                                 urlObj.port === httpConfig.port.toString() && 
+                                 urlObj.pathname === httpConfig.endpoint;
+      
+      if (isLogServerRequest) {
+        console.log(`⏭️ [FETCH_INTERCEPTOR] Skipping log server request to prevent infinite loop: ${url}`);
+        return state.originalFetch!(...args);
+      }
+    }
+    
     processedRequests.add(requestId);
     
     try {
@@ -200,7 +212,7 @@ export function interceptFetch(
       
       // Usar la función de envío proporcionada
       console.log(`📤 [FETCH_INTERCEPTOR] Sending fetch data via WebSocket`);
-      console.log(`📤 [FETCH_INTERCEPTOR] Data being sent:`, { type: 'fetch', payload: info });
+      console.log(`📤 [FETCH_INTERCEPTOR] Data being sent:`, { type: 'fetch', payload: JSON.stringify(info).slice(0, 100) + '...' });
       sendWS({ type: 'fetch', payload: info });
 
       return res;

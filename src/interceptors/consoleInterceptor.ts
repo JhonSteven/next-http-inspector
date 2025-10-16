@@ -18,7 +18,11 @@ export function interceptConsole(sendWS: (data: any) => void) {
          args[0].includes('[INIT]') ||
          args[0].includes('[REINIT]') ||
          args[0].includes('[CONNECTION_MONITOR]') ||
-         args[0].includes('[HOT_RELOAD]'))) {
+         args[0].includes('[HOT_RELOAD]') ||
+         args[0].includes('[HTTP]') ||
+         args[0].includes('ECONNREFUSED') ||
+         args[0].includes('Request error') ||
+         args[0].includes('Response status'))) {
       origLog(...args);
       return;
     }

@@ -26,6 +26,30 @@ This package **connects directly** to external WebSocket servers using only the 
 npm install --save-dev next-http-inspector
 ```
 
+## 🔧 Troubleshooting
+
+### Error: "Module not found: Can't resolve 'crypto'"
+
+Si encuentras este error, significa que el paquete está intentando ejecutarse en el navegador. Este paquete está diseñado para funcionar solo en el servidor (Node.js).
+
+**Solución rápida:**
+1. Asegúrate de que la inicialización solo ocurra en el servidor
+2. Usa verificación de entorno en tu código:
+
+```typescript
+// En instrumentation.ts o _app.tsx
+if (typeof window === 'undefined') {
+  setupNextInstrument({
+    logFetch: true,
+    logConsole: true,
+    logErrors: true,
+    websocket: { enabled: true, port: 8080 }
+  });
+}
+```
+
+Para más detalles, consulta [CRYPTO_FIX.md](./CRYPTO_FIX.md).
+
 ## 📖 Usage
 
 ### For Next.js
