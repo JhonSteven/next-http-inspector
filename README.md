@@ -26,18 +26,18 @@ npm install --save-dev next-http-server-inspector
 
 ## 📖 Usage
 
-### Para Next.js
+### For Next.js
 
-1. **Crear archivo de instrumentación** (`instrumentation.ts` en la raíz del proyecto):
+1. **Create instrumentation file** (`instrumentation.ts` in project root):
 
 ```typescript
 import { setupNextInstrument } from 'next-http-server-inspector';
 
 export async function register() {
   setupNextInstrument({
-    logFetch: true,        // Los fetchs se muestran en la UI web
-    logConsole: true,      // Los console.log se muestran en consola
-    logErrors: true,       // Los errores se muestran en consola
+    logFetch: true,        // Fetch requests are shown in web UI
+    logConsole: true,      // Console.log messages are shown in console
+    logErrors: true,       // Errors are shown in console
     websocket: { 
       enabled: true, 
       port: 8080 
@@ -49,12 +49,12 @@ export async function register() {
     }
   });
   
-  console.log('🚀 Next Http Server Inspector iniciado!');
-  console.log('📊 UI disponible en: http://localhost:3001/ui');
+  console.log('🚀 Next Http Server Inspector started!');
+  console.log('📊 UI available at: http://localhost:3001/ui');
 }
 ```
 
-2. **Habilitar instrumentación** en `next.config.js`:
+2. **Enable instrumentation** in `next.config.js`:
 
 ```javascript
 /** @type {import('next').NextConfig} */
@@ -67,21 +67,21 @@ const nextConfig = {
 module.exports = nextConfig;
 ```
 
-3. **Ejecutar Next.js**:
+3. **Run Next.js**:
 
 ```bash
 npm run dev
 ```
 
-### Para otros proyectos
+### For other projects
 
 ```javascript
 import { setupNextInstrument } from 'next-http-server-inspector';
 
 const { wsServer, uiServer } = setupNextInstrument({
-  logFetch: true,        // Los fetchs se muestran en la UI web
-  logConsole: true,      // Los console.log se muestran en consola
-  logErrors: true,       // Los errores se muestran en consola
+  logFetch: true,        // Fetch requests are shown in web UI
+  logConsole: true,      // Console.log messages are shown in console
+  logErrors: true,       // Errors are shown in console
   websocket: {
     enabled: true,
     port: 8080
@@ -93,8 +93,8 @@ const { wsServer, uiServer } = setupNextInstrument({
   }
 });
 
-console.log('🚀 Next Http Server Inspector iniciado!');
-console.log('📊 UI disponible en: http://localhost:3001/ui');
+console.log('🚀 Next Http Server Inspector started!');
+console.log('📊 UI available at: http://localhost:3001/ui');
 ```
 
 ## ✨ Features
@@ -136,9 +136,9 @@ console.log('📊 UI disponible en: http://localhost:3001/ui');
 
 ```typescript
 interface InstrumentOptions {
-  logFetch?: boolean;           // Mostrar fetchs en UI web
-  logConsole?: boolean;         // Mostrar console.log en terminal
-  logErrors?: boolean;          // Mostrar errores en terminal
+  logFetch?: boolean;           // Show fetch requests in web UI
+  logConsole?: boolean;         // Show console.log messages in terminal
+  logErrors?: boolean;          // Show errors in terminal
   websocket?: {
     enabled: boolean;
     port: number;
@@ -148,7 +148,7 @@ interface InstrumentOptions {
     port: number;
     path: string;
   };
-  fetchGroupInterval?: number;  // Intervalo para agrupar logs (ms)
+  fetchGroupInterval?: number;  // Interval for grouping logs (ms)
 }
 ```
 
@@ -168,13 +168,13 @@ interface InstrumentOptions {
 ## 🔧 Development
 
 ```bash
-# Instalar dependencias
+# Install dependencies
 npm install
 
-# Compilar TypeScript
+# Compile TypeScript
 npm run build
 
-# Ejecutar ejemplo
+# Run example
 node example.js
 ```
 

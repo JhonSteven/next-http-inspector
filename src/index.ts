@@ -1,9 +1,19 @@
 import { createWebSocketServer, getGlobalWsServer, closeWebSocketServer } from './wsServer';
 import { createUIServer } from './uiServer';
-import { interceptFetch } from './interceptors/fetchInterceptor';
+import { interceptFetch, getInterceptorStatus, resetFetchInterceptor } from './interceptors/fetchInterceptor';
 import { interceptConsole } from './interceptors/consoleInterceptor';
 import { interceptErrors } from './interceptors/errorInterceptor';
 import type { InstrumentOptions, WebSocketWrapper } from './types';
+
+// Type declaration for debugging functions
+declare global {
+  var __nextHttpInspectorDebug: {
+    getInterceptorStatus: () => { isInstalled: boolean; hasOriginalFetch: boolean; currentFetchType: string };
+    resetFetchInterceptor: () => void;
+    getHotReloadCount: () => number;
+    getGlobalWsServer: () => any;
+  } | undefined;
+}
 
 // Variables globales para manejar el estado
 let globalWsServer: any = null;
@@ -112,7 +122,11 @@ export function setupNextInstrument({
 
   // 3️⃣ Configurar interceptores
   if (logFetch) {
+    console.log('🔧 [INIT] Before setting up fetch interceptor');
+    console.log('🔧 [INIT] Interceptor status:', getInterceptorStatus());
     interceptFetch(globalWsServer, fetchGroupInterval);
+    console.log('🔧 [INIT] After setting up fetch interceptor');
+    console.log('🔧 [INIT] Interceptor status:', getInterceptorStatus());
     console.log('✅ Fetch interceptor enabled');
   }
   
@@ -136,8 +150,22 @@ export function setupNextInstrument({
   console.log(`🎉 [INIT] Hot reload count: ${hotReloadCount}`);
   console.log(`🎉 [INIT] WebSocket server: ${!!globalWsServer}`);
   console.log(`🎉 [INIT] UI server: ${!!globalUiServer}`);
+  
+  // Expose debugging functions to global scope for browser console access
+  if (typeof globalThis !== 'undefined') {
+    globalThis.__nextHttpInspectorDebug = {
+      getInterceptorStatus,
+      resetFetchInterceptor,
+      getHotReloadCount: () => hotReloadCount,
+      getGlobalWsServer: () => globalWsServer
+    };
+  }
+  
   return { wsServer: globalWsServer, uiServer: globalUiServer };
 }
+
+// Export debugging functions
+export { getInterceptorStatus, resetFetchInterceptor };
 
 // Función para reinicializar en caso de hot reload
 export function reinitializeInstrument(options: InstrumentOptions = {}) {

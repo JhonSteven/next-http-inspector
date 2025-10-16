@@ -68,7 +68,23 @@ function getCustomHooks(): string {
             const [isReconnecting, setIsReconnecting] = useState(false);
             const [connectionError, setConnectionError] = useState(null);
             const [lastConnectionTime, setLastConnectionTime] = useState(null);
-            const [messageCount, setMessageCount] = useState(0);
+            
+            // Cargar messageCount persistido del localStorage
+            const loadPersistedMessageCount = () => {
+                try {
+                    const saved = localStorage.getItem('next-telescope-message-count');
+                    if (saved) {
+                        const count = parseInt(saved, 10);
+                        console.log('🔄 [WEBSOCKET] Restoring message count from localStorage:', count);
+                        return count;
+                    }
+                } catch (e) {
+                    console.warn('⚠️ [WEBSOCKET] Failed to load persisted message count:', e);
+                }
+                return 0;
+            };
+            
+            const [messageCount, setMessageCount] = useState(loadPersistedMessageCount);
 
             const connectWebSocket = () => {
                 if (ws && ws.readyState === WebSocket.OPEN) {
@@ -92,7 +108,17 @@ function getCustomHooks(): string {
                     
                     websocket.onmessage = (event) => {
                         console.log('📨 [WEBSOCKET] Raw message received:', event.data);
-                        setMessageCount(prev => prev + 1);
+                        setMessageCount(prev => {
+                            const newCount = prev + 1;
+                            // Persistir el contador en localStorage
+                            try {
+                                localStorage.setItem('next-telescope-message-count', newCount.toString());
+                                console.log('💾 [WEBSOCKET] Persisted message count to localStorage:', newCount);
+                            } catch (e) {
+                                console.warn('⚠️ [WEBSOCKET] Failed to persist message count:', e);
+                            }
+                            return newCount;
+                        });
                         try {
                             const data = JSON.parse(event.data);
                             console.log('📨 [WEBSOCKET] Parsed message:', data);
@@ -185,14 +211,29 @@ function getCustomHooks(): string {
             }, [ws, isReconnecting, connectionError]);
 
             useEffect(() => {
+                console.log('🔄 [WEBSOCKET] useEffect triggered - wsPort:', wsPort);
                 connectWebSocket();
 
                 return () => {
+                    console.log('🔄 [WEBSOCKET] Cleanup - closing WebSocket');
                     if (ws) {
                         ws.close(1000, 'Component unmounting');
                     }
                 };
             }, [wsPort]);
+
+            // Efecto adicional para detectar hot reload y reconectar si es necesario
+            useEffect(() => {
+                // Si no estamos conectados después de un tiempo, intentar reconectar
+                const timeout = setTimeout(() => {
+                    if (!isConnected && !isReconnecting) {
+                        console.log('🔄 [WEBSOCKET] Hot reload detected - attempting to reconnect');
+                        connectWebSocket();
+                    }
+                }, 1000);
+
+                return () => clearTimeout(timeout);
+            }, [isConnected, isReconnecting]);
 
             return { isConnected, ws, isReconnecting, connectionError, manualReconnect, lastConnectionTime, messageCount };
         }
@@ -230,7 +271,7 @@ function getReactComponents(): string {
 
 function getHeaderComponent(): string {
   return `
-        function Header({ onToggleTheme, onClearAll, theme, onReconnect, connectionError, isConnected, isReconnecting, lastConnectionTime, messageCount }) {
+        function Header({ onToggleTheme, onClearAll, theme, onReconnect, connectionError, isConnected, isReconnecting, lastConnectionTime, messageCount, requests }) {
             return React.createElement('div', { className: 'header' },
                 React.createElement('h1', null, '🔭 Next Http Server Inspector'),
                 React.createElement('div', { className: 'header-controls' },
@@ -256,7 +297,10 @@ function getHeaderComponent(): string {
                         }, \`(\${new Date(lastConnectionTime).toLocaleTimeString()})\`),
                         React.createElement('span', { 
                             style: { fontSize: '10px', opacity: 0.7, marginLeft: '8px' }
-                        }, \`Messages: \${messageCount}\`)
+                        }, \`Messages: \${messageCount}\`),
+                        React.createElement('span', { 
+                            style: { fontSize: '10px', opacity: 0.7, marginLeft: '8px' }
+                        }, \`Requests: \${requests.length}\`)
                     ),
                     (connectionError || !isConnected) && React.createElement('button', { 
                         className: 'reconnect-btn', 
@@ -905,6 +949,7 @@ function getMainApp(): string {
                     if (saved) {
                         const parsed = JSON.parse(saved);
                         console.log('🔄 [UI] Restoring persisted requests:', parsed.length);
+                        console.log('🔄 [UI] Sample request:', parsed[0]);
                         return parsed;
                     }
                 } catch (e) {
@@ -913,26 +958,63 @@ function getMainApp(): string {
                 return [];
             };
 
-            const [requests, setRequests] = useState(loadPersistedRequests);
+            const [requests, setRequests] = useState([]);
             const [filter, setFilter] = useState('all');
             const [expandedItems, setExpandedItems] = useState(new Set());
             const [selectedRequestId, setSelectedRequestId] = useState(null);
             const [showRestoreMessage, setShowRestoreMessage] = useState(false);
+            const [hasRestoredData, setHasRestoredData] = useState(false);
             
             const { theme, toggleTheme } = useTheme();
             
-            // Detectar hot reload y mostrar información
+            // Cargar datos del localStorage inmediatamente después del mount
             useEffect(() => {
+                console.log('🔄 [UI] Loading data from localStorage on mount');
                 const persistedRequests = loadPersistedRequests();
+                console.log('🔄 [UI] Loaded requests from localStorage:', persistedRequests.length);
+                
                 if (persistedRequests.length > 0) {
-                    console.log('🔄 [UI] Hot reload detected - restored', persistedRequests.length, 'requests from localStorage');
+                    setRequests(persistedRequests);
+                    setHasRestoredData(true); // Marcar que se restauraron datos
+                    console.log('✅ [UI] Successfully set requests state:', persistedRequests.length);
+                }
+            }, []); // Solo ejecutar una vez después del mount
+            
+            // Mostrar mensaje de restauración solo cuando se restauraron datos del localStorage
+            useEffect(() => {
+                if (hasRestoredData && requests.length > 0) {
+                    console.log('🔄 [UI] Showing restore message for', requests.length, 'restored requests');
                     setShowRestoreMessage(true);
                     // Ocultar el mensaje después de 5 segundos
                     setTimeout(() => setShowRestoreMessage(false), 5000);
+                    // Resetear el flag para que no aparezca de nuevo
+                    setHasRestoredData(false);
                 }
-            }, []);
+            }, [hasRestoredData, requests.length]);
 
-            const { isConnected, isReconnecting, connectionError, manualReconnect, lastConnectionTime, messageCount } = useWebSocket(wsPort, (data) => {
+            // Efecto de respaldo para sincronizar datos si hay discrepancias
+            useEffect(() => {
+                // Solo ejecutar si el estado está vacío pero localStorage tiene datos
+                if (requests.length === 0) {
+                    const localStorageRequests = (() => {
+                        try {
+                            const saved = localStorage.getItem('next-telescope-requests');
+                            return saved ? JSON.parse(saved) : [];
+                        } catch (e) {
+                            return [];
+                        }
+                    })();
+                    
+                    if (localStorageRequests.length > 0) {
+                        console.log('🔄 [UI] Backup sync - state is empty but localStorage has', localStorageRequests.length, 'requests');
+                        setRequests(localStorageRequests);
+                        setHasRestoredData(true); // Marcar que se restauraron datos en el backup sync
+                    }
+                }
+            }, [requests.length]);
+
+            // Callback estable para el WebSocket usando useCallback
+            const handleWebSocketMessage = useCallback((data) => {
                 console.log('🔍 [UI] WebSocket message received:', data);
                 console.log('🔍 [UI] Message type:', data.type);
                 console.log('🔍 [UI] Message payload:', data.payload);
@@ -964,18 +1046,22 @@ function getMainApp(): string {
                 } else {
                     console.log('⚠️ [UI] Unknown message type:', data.type);
                 }
-            });
+            }, [setRequests]);
+
+            const { isConnected, isReconnecting, connectionError, manualReconnect, lastConnectionTime, messageCount } = useWebSocket(wsPort, handleWebSocketMessage);
 
             const clearAllRequests = useCallback(() => {
                 setRequests([]);
                 setExpandedItems(new Set());
                 setSelectedRequestId(null);
+                setHasRestoredData(false); // Resetear el flag de restauración
                 // Limpiar también el localStorage
                 try {
                     localStorage.removeItem('next-telescope-requests');
-                    console.log('🗑️ [UI] Cleared persisted requests from localStorage');
+                    localStorage.removeItem('next-telescope-message-count');
+                    console.log('🗑️ [UI] Cleared persisted requests and message count from localStorage');
                 } catch (e) {
-                    console.warn('⚠️ [UI] Failed to clear persisted requests:', e);
+                    console.warn('⚠️ [UI] Failed to clear persisted data:', e);
                 }
             }, []);
 
@@ -1019,7 +1105,130 @@ function getMainApp(): string {
                 console.log('🔍 [UI] - Filtered requests:', filteredRequests.length);
                 console.log('🔍 [UI] - Filter:', filter);
                 console.log('🔍 [UI] - Is connected:', isConnected);
-            }, [requests.length, filteredRequests.length, filter, isConnected]);
+                console.log('🔍 [UI] - Message count:', messageCount);
+                
+                // Exponer funciones de debug en window para inspección manual
+                window.debugTelescope = {
+                    getRequests: () => requests,
+                    getFilteredRequests: () => filteredRequests,
+                    getLocalStorageRequests: () => {
+                        try {
+                            const saved = localStorage.getItem('next-telescope-requests');
+                            return saved ? JSON.parse(saved) : null;
+                        } catch (e) {
+                            return null;
+                        }
+                    },
+                    getMessageCount: () => messageCount,
+                    getLocalStorageMessageCount: () => {
+                        try {
+                            const saved = localStorage.getItem('next-telescope-message-count');
+                            return saved ? parseInt(saved, 10) : null;
+                        } catch (e) {
+                            return null;
+                        }
+                    },
+                    clearAll: clearAllRequests,
+                    reloadRequests: () => {
+                        const persistedRequests = loadPersistedRequests();
+                        setRequests(persistedRequests);
+                        console.log('🔄 [DEBUG] Reloaded requests:', persistedRequests.length);
+                    },
+                    forceSync: () => {
+                        const localStorageRequests = (() => {
+                            try {
+                                const saved = localStorage.getItem('next-telescope-requests');
+                                return saved ? JSON.parse(saved) : [];
+                            } catch (e) {
+                                return [];
+                            }
+                        })();
+                        setRequests(localStorageRequests);
+                        console.log('🔄 [DEBUG] Force sync completed:', localStorageRequests.length, 'requests');
+                        return localStorageRequests.length;
+                    },
+                    emergencySync: () => {
+                        console.log('🚨 [DEBUG] Emergency sync - forcing immediate data restoration');
+                        const localStorageRequests = (() => {
+                            try {
+                                const saved = localStorage.getItem('next-telescope-requests');
+                                return saved ? JSON.parse(saved) : [];
+                            } catch (e) {
+                                console.error('❌ [DEBUG] Failed to parse localStorage data:', e);
+                                return [];
+                            }
+                        })();
+                        
+                        if (localStorageRequests.length > 0) {
+                            setRequests(localStorageRequests);
+                            console.log('✅ [DEBUG] Emergency sync completed:', localStorageRequests.length, 'requests restored');
+                            return localStorageRequests.length;
+                        } else {
+                            console.log('⚠️ [DEBUG] No data found in localStorage for emergency sync');
+                            return 0;
+                        }
+                    },
+                    debugHotReload: () => {
+                        console.log('🔍 [DEBUG] Hot reload diagnostic:');
+                        console.log('🔍 [DEBUG] - Current state requests:', requests.length);
+                        console.log('🔍 [DEBUG] - Current filtered requests:', filteredRequests.length);
+                        console.log('🔍 [DEBUG] - Current message count:', messageCount);
+                        
+                        const localStorageRequests = (() => {
+                            try {
+                                const saved = localStorage.getItem('next-telescope-requests');
+                                return saved ? JSON.parse(saved) : [];
+                            } catch (e) {
+                                return [];
+                            }
+                        })();
+                        
+                        console.log('🔍 [DEBUG] - localStorage requests:', localStorageRequests.length);
+                        console.log('🔍 [DEBUG] - localStorage message count:', localStorage.getItem('next-telescope-message-count'));
+                        console.log('🔍 [DEBUG] - WebSocket connected:', isConnected);
+                        console.log('🔍 [DEBUG] - WebSocket reconnecting:', isReconnecting);
+                        
+                        // Intentar cargar datos manualmente
+                        console.log('🔄 [DEBUG] Attempting manual data load...');
+                        const manualLoad = loadPersistedRequests();
+                        console.log('🔄 [DEBUG] Manual load result:', manualLoad.length, 'requests');
+                        
+                        if (manualLoad.length > 0 && requests.length === 0) {
+                            console.log('🚨 [DEBUG] Found discrepancy - forcing state update');
+                            setRequests(manualLoad);
+                        }
+                        
+                        return {
+                            stateRequests: requests.length,
+                            localStorageRequests: localStorageRequests.length,
+                            messageCount: messageCount,
+                            isConnected: isConnected,
+                            manualLoadResult: manualLoad.length
+                        };
+                    },
+                    checkSync: () => {
+                        const localStorageRequests = (() => {
+                            try {
+                                const saved = localStorage.getItem('next-telescope-requests');
+                                return saved ? JSON.parse(saved) : [];
+                            } catch (e) {
+                                return [];
+                            }
+                        })();
+                        console.log('🔍 [DEBUG] Sync check:');
+                        console.log('🔍 [DEBUG] - State requests:', requests.length);
+                        console.log('🔍 [DEBUG] - localStorage requests:', localStorageRequests.length);
+                        console.log('🔍 [DEBUG] - Message count:', messageCount);
+                        console.log('🔍 [DEBUG] - localStorage message count:', localStorage.getItem('next-telescope-message-count'));
+                        return {
+                            stateRequests: requests.length,
+                            localStorageRequests: localStorageRequests.length,
+                            messageCount: messageCount,
+                            localStorageMessageCount: localStorage.getItem('next-telescope-message-count')
+                        };
+                    }
+                };
+            }, [requests.length, filteredRequests.length, filter, isConnected, messageCount]);
 
             const stats = {
                 total: requests.length,
@@ -1049,7 +1258,8 @@ function getMainApp(): string {
                     isConnected: isConnected,
                     isReconnecting: isReconnecting,
                     lastConnectionTime: lastConnectionTime,
-                    messageCount: messageCount
+                    messageCount: messageCount,
+                    requests: requests
                 }),
                 connectionError && React.createElement('div', { 
                     className: 'error-banner',

@@ -1,6 +1,14 @@
 import { sendWS, getGlobalWsServer } from './../wsServer';
 import type { WebSocketServer } from 'ws';
 
+// Type declaration for global state
+declare global {
+  var __next_http_inspector_fetch_interceptor__: {
+    isInstalled: boolean;
+    originalFetch: typeof globalThis.fetch | null;
+  } | undefined;
+}
+
 // Helper function to extract request headers
 function extractRequestHeaders(headers: any): Record<string, string> {
   const requestHeaders: Record<string, string> = {};
@@ -99,23 +107,51 @@ function createBaseRequestInfo(url: string | URL | Request, options: RequestInit
   };
 }
 
+// Global state to track if interceptor is already installed
+// Using globalThis to persist across hot reloads
+const INTERCEPTOR_KEY = '__next_http_inspector_fetch_interceptor__';
+
+function getInterceptorState() {
+  if (!globalThis[INTERCEPTOR_KEY]) {
+    globalThis[INTERCEPTOR_KEY] = {
+      isInstalled: false,
+      originalFetch: null
+    };
+  }
+  return globalThis[INTERCEPTOR_KEY];
+}
+
 export function interceptFetch(
   wsServer: WebSocketServer | undefined,
   fetchGroupInterval: number = 20000
 ) {
-  if (typeof global.fetch !== 'function') {
+  if (typeof globalThis.fetch !== 'function') {
     console.log('❌ [FETCH_INTERCEPTOR] Global fetch not available');
+    return;
+  }
+
+  const state = getInterceptorState();
+
+  // Check if interceptor is already installed
+  if (state.isInstalled) {
+    console.log('🔧 [FETCH_INTERCEPTOR] Interceptor already installed, skipping');
+    console.log('🔧 [FETCH_INTERCEPTOR] Current fetch function:', typeof globalThis.fetch);
+    console.log('🔧 [FETCH_INTERCEPTOR] Original fetch function:', typeof state.originalFetch);
     return;
   }
 
   console.log('🔧 [FETCH_INTERCEPTOR] Setting up fetch interceptor');
   console.log('🔧 [FETCH_INTERCEPTOR] WebSocket server available:', !!wsServer);
 
-  const originalFetch = global.fetch;
+  // Store the original fetch function
+  state.originalFetch = globalThis.fetch;
   const fetchLogs: any[] = [];
   const processedRequests = new Set<string>();
 
-  global.fetch = async (...args) => {
+  // Mark as installed
+  state.isInstalled = true;
+
+  globalThis.fetch = async (...args) => {
     const startTime = performance.now();
     const startDate = new Date();
     const url = args[0];
@@ -129,13 +165,13 @@ export function interceptFetch(
     // Skip if this request was already processed
     if (processedRequests.has(requestId)) {
       console.log(`⏭️ [FETCH_INTERCEPTOR] Skipping duplicate request: ${requestId}`);
-      return originalFetch(...args);
+      return state.originalFetch!(...args);
     }
     
     processedRequests.add(requestId);
     
     try {
-      const res = await originalFetch(...args);
+      const res = await state.originalFetch!(...args);
       const endTime = performance.now();
       const endDate = new Date();
       const duration = endTime - startTime;
@@ -199,4 +235,25 @@ export function interceptFetch(
       }, 1000);
     }
   };
+}
+
+// Function to check interceptor status
+export function getInterceptorStatus() {
+  const state = getInterceptorState();
+  return {
+    isInstalled: state.isInstalled,
+    hasOriginalFetch: !!state.originalFetch,
+    currentFetchType: typeof globalThis.fetch
+  };
+}
+
+// Function to reset the interceptor (useful for testing or manual cleanup)
+export function resetFetchInterceptor() {
+  const state = getInterceptorState();
+  if (state.originalFetch && state.isInstalled) {
+    globalThis.fetch = state.originalFetch;
+    state.isInstalled = false;
+    state.originalFetch = null;
+    console.log('🔧 [FETCH_INTERCEPTOR] Interceptor reset');
+  }
 }
