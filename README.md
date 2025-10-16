@@ -1,240 +1,212 @@
-# next-http-server-inspector
+# Next Http Inspector
 
-🔭 **Next Http Server Inspector** — Development-only toolkit that captures logs, requests, errors and metrics in real-time during development with a modern React-based UI.
+**Interceptors for Next.js** that connect directly to external WebSocket servers (dev-only).
+
+This package provides interceptors that capture HTTP requests, console logs, and errors, connecting directly to external WebSocket servers for real-time monitoring.
+
+## 🎯 Focus
+
+This package **connects directly** to external WebSocket servers using only the `ws` library. It does not require any external packages and creates its own WebSocket client connections.
 
 ## ✨ Features
 
-- **🔭 Real-time Network Monitoring**: Track all HTTP requests with detailed information
-- **⚡ React-based UI**: Modern, responsive interface built with React
-- **🌙 Dark/Light Theme**: Toggle between themes with persistent preferences
-- **📊 Live Statistics**: Real-time metrics including success rates and response times
-- **🔍 Request Filtering**: Filter requests by method (GET, POST, PUT, DELETE) or errors
-- **📱 Responsive Design**: Works perfectly on desktop and mobile devices
-- **🔌 WebSocket Integration**: Real-time data streaming for instant updates
-- **📑 Tabbed Interface**: Organized request details with separate tabs for headers and response body
-- **🌳 Interactive JSON Viewer**: Expandable/collapsible JSON with syntax highlighting
-- **🔄 Smart Reconnection**: Automatic WebSocket reconnection with manual retry option
-- **⚡ Optimized Performance**: No duplicate requests, efficient data handling
+- 🔍 **Fetch Interceptor**: Captures all HTTP requests and responses
+- 📝 **Console Interceptor**: Captures console.log calls
+- ❌ **Error Interceptor**: Captures console.error calls
+- 📡 **Direct WebSocket Connection**: Connects directly to external servers
+- 🔄 **Hot Reload Support**: Handles Next.js hot reloads gracefully
+- 🛡️ **Development Only**: Automatically disabled in production
+- 🚀 **Zero External Dependencies**: Only requires `ws` library
 
 ## 🚀 Installation
 
 > ⚠️ **Development Only**: This package is designed exclusively for development environments. Do not install in production.
 
 ```bash
-npm install --save-dev next-http-server-inspector
+npm install --save-dev next-http-inspector
 ```
 
 ## 📖 Usage
 
 ### For Next.js
 
-1. **Create instrumentation file** (`instrumentation.ts` in project root):
+1. **Create instrumentation file** (`instrumentation.ts` in your project root):
 
 ```typescript
-import { setupNextInstrument } from 'next-http-server-inspector';
+import { setupNextInstrument } from 'next-http-inspector';
 
-export async function register() {
+export function register() {
   setupNextInstrument({
-    logFetch: true,        // Fetch requests are shown in web UI
-    logConsole: true,      // Console.log messages are shown in console
-    logErrors: true,       // Errors are shown in console
-    websocket: { 
-      enabled: true, 
-      port: 8080 
-    },
-    ui: {
-      enabled: true,
-      port: 3001,
-      path: '/ui'
-    }
+    logFetch: true,
+    logConsole: true,
+    logErrors: true,
+    websocket: { enabled: true, port: 8080 }
   });
-  
-  console.log('🚀 Next Http Server Inspector started!');
-  console.log('📊 UI available at: http://localhost:3001/ui');
 }
 ```
 
-2. **Enable instrumentation** in `next.config.js`:
+2. **Start external servers** (in a separate terminal):
 
-```javascript
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  experimental: {
-    instrumentationHook: true,
-  },
-};
+```bash
+# Install the server globally (one-time setup)
+npm install -g next-http-inspector-server
 
-module.exports = nextConfig;
+# Start the server
+next-inspector-server --ui-port 3001 --ws-port 8080
 ```
 
-3. **Run Next.js**:
+3. **Start your Next.js app**:
 
 ```bash
 npm run dev
 ```
 
-### For other projects
+4. **Access the monitoring UI**:
 
-```javascript
-import { setupNextInstrument } from 'next-http-server-inspector';
+Open [http://localhost:3001/ui](http://localhost:3001/ui) in your browser.
 
-const { wsServer, uiServer } = setupNextInstrument({
-  logFetch: true,        // Fetch requests are shown in web UI
-  logConsole: true,      // Console.log messages are shown in console
-  logErrors: true,       // Errors are shown in console
-  websocket: {
-    enabled: true,
-    port: 8080
-  },
-  ui: {
-    enabled: true,
-    port: 3001,
-    path: '/ui'
-  }
-});
-
-console.log('🚀 Next Http Server Inspector started!');
-console.log('📊 UI available at: http://localhost:3001/ui');
-```
-
-## ✨ Features
-
-### 🖥️ Web UI Dashboard
-- **URL**: `http://localhost:3001/ui` (configurable)
-- **Network Monitoring**: Chrome DevTools-style network monitoring
-- **Complete Capture**: Headers, URL params, request/response body
-- **Chronological Order**: Requests displayed from first to last
-- **Timing Analysis**: Start/end timestamps for parallel execution analysis
-- **Filters**: By HTTP method (GET, POST, PUT, DELETE) and errors
-- **Live Statistics**: Total requests, success rate, average duration
-- **Theme Toggle**: Switch between light and dark modes
-- **Clear All**: Button to clear all request data
-- **Tabbed Interface**: 
-  - **Details Tab**: URL breakdown, request headers, response headers, timing info
-  - **Response Body Tab**: Interactive JSON viewer with expand/collapse
-- **Interactive JSON Viewer**:
-  - **Syntax Highlighting**: Different colors for strings, numbers, booleans, null
-  - **Expandable Objects**: Click to expand/collapse JSON objects and arrays
-  - **Smart Defaults**: First 2 levels expanded by default
-  - **Visual Indicators**: Clear brackets, commas, and indentation
-- **Smart Connection Management**:
-  - **Auto Reconnection**: Automatic retry with exponential backoff
-  - **Manual Retry**: Button to manually reconnect when connection fails
-  - **Connection Status**: Visual indicators (🟢 connected, 🟡 reconnecting, 🔴 disconnected)
-- **Responsive Design**: Works on desktop and mobile
-
-### 📝 Console Logging
-- `console.log()` messages appear in terminal console
-- Fetch requests **DO NOT** appear in console (only in web UI)
-- Errors are displayed in console
-
-### 🔌 WebSocket Server
-- WebSocket server on port 8080 (configurable)
-- Real-time communication between application and UI
-
-## ⚙️ Configuration
+### Configuration Options
 
 ```typescript
-interface InstrumentOptions {
-  logFetch?: boolean;           // Show fetch requests in web UI
-  logConsole?: boolean;         // Show console.log messages in terminal
-  logErrors?: boolean;          // Show errors in terminal
-  websocket?: {
-    enabled: boolean;
-    port: number;
-  };
-  ui?: {
-    enabled: boolean;
-    port: number;
-    path: string;
-  };
-  fetchGroupInterval?: number;  // Interval for grouping logs (ms)
-}
+setupNextInstrument({
+  logFetch: true,           // Enable fetch interceptor
+  logConsole: true,         // Enable console interceptor
+  logErrors: true,          // Enable error interceptor
+  websocket: {
+    enabled: true,          // Enable WebSocket server
+    port: 8080             // WebSocket port
+  },
+  fetchGroupInterval: 20000 // Group fetch requests (ms)
+});
 ```
 
-## 🎯 Default Configuration
+## 🏗️ Architecture
 
-```javascript
-{
-  logFetch: true,
-  logConsole: true,
-  logErrors: true,
-  websocket: { enabled: true, port: 8080 },
-  ui: { enabled: true, port: 3001, path: '/ui' },
-  fetchGroupInterval: 20000
-}
 ```
+┌─────────────────────────────────────┐
+│           Next.js App               │
+│  ┌─────────────────────────────────┐│
+│  │     Interceptors Package        ││
+│  │  ┌─────────────────────────────┐││
+│  │  │  Fetch Interceptor          │││
+│  │  │  Console Interceptor        │││
+│  │  │  Error Interceptor          │││
+│  │  └─────────────────────────────┘││
+│  └─────────────────────────────────┘│
+└─────────────────────────────────────┘
+                    │
+                    │ Direct WebSocket Client
+                    ▼
+┌─────────────────────────────────────┐
+│    External Server Package          │
+│  ┌─────────────────────────────────┐│
+│  │  WebSocket Server (port 8080)   ││
+│  │  UI Server (port 3001)          ││
+│  └─────────────────────────────────┘│
+└─────────────────────────────────────┘
+```
+
+**Key Points:**
+- This package **creates its own WebSocket client** connections
+- No external package dependencies required
+- Direct connection to external WebSocket servers
+- Ultra-clean separation of concerns
 
 ## 🔧 Development
 
+### Build
+
 ```bash
-# Install dependencies
-npm install
-
-# Compile TypeScript
 npm run build
-
-# Run example
-node example.js
 ```
 
-## ⚠️ Production Considerations
+### Development Mode
 
-- **Development Only**: This package is designed exclusively for development environments
-- **Automatic Detection**: The package automatically detects production environments and skips initialization
-- **No Production Impact**: When `NODE_ENV=production`, the package returns empty objects without starting servers
-- **Security**: Never install this package in production builds
-- **Performance**: Zero performance impact in production environments
+```bash
+npm run dev
+```
 
-## 📊 UI Features
+## 📦 Package Structure
 
-- **Real-time Updates**: Requests appear instantly
-- **Complete Capture**: 
-  - Request and response headers
-  - URL parameters breakdown
-  - Request and response body
-  - Parsed URL (protocol, host, path, query, hash)
-  - Timing information (start/end timestamps)
-- **Smart Filters**: Filter by HTTP method or errors
-- **Live Statistics**: Real-time updated counters
-- **Adaptive Theme**: Switch between light and dark modes
-- **Data Management**: Clear all requests button
-- **Expandable Details**: Complete information for each request
-- **Chrome DevTools Style**: Professional interface with smooth transitions
-- **Responsive**: Adapts to any screen size
-- **Persistence**: Theme preference saved in localStorage
-- **Chronological Order**: Requests displayed from first to last
-- **Parallel Analysis**: Start/end timestamps for analyzing concurrent requests
+```
+src/
+├── index.ts                    # Main setup function
+├── types.ts                    # TypeScript definitions
+└── interceptors/
+    ├── fetchInterceptor.ts      # HTTP request/response interceptor
+    ├── consoleInterceptor.ts    # Console.log interceptor
+    └── errorInterceptor.ts      # Console.error interceptor
+```
 
-## 🔧 Troubleshooting
+## 🔗 Related Packages
 
-### Requests don't appear in the UI
+- [`next-http-inspector-server`](../next-http-inspector-server) - External WebSocket and UI servers
 
-1. **Check port configuration**:
-   - WebSocket should be on port 8080 (default)
-   - UI should be on port 3001 (default)
-   - Make sure ports are not in use
+## 🛠️ Troubleshooting
 
-2. **Verify instrumentation**:
-   - `instrumentation.ts` file must be in project root
-   - `next.config.js` must have `instrumentationHook: true`
-   - Restart Next.js development server
+### No Data Appearing in UI
 
-3. **Check WebSocket connection**:
-   - Open browser developer tools
-   - Go to Console tab
-   - Should see "Connected to WebSocket on port 8080"
+1. **Check external servers are running**:
+   ```bash
+   next-inspector-server --ui-port 3001 --ws-port 8080
+   ```
 
-4. **Verify requests are being made**:
-   - Requests only appear when they are executed
-   - Make sure your application is making HTTP requests
+2. **Verify ports match**:
+   - WebSocket port in `setupNextInstrument()` should match `--ws-port`
+   - UI port should match `--ui-port`
 
-### UI doesn't load
+3. **Check logs**:
+   - Look for "✅ Using WebSocket library for external server connection" in console
+   - Verify interceptors are enabled: "✅ Fetch interceptor enabled"
+   - Look for "📡 [WEBSOCKET] Connected to external server" message
 
-1. **Check UI port**:
-   - Make sure port 3001 is available
-   - Change port if needed: `ui: { port: 3002 }`
+### Hot Reload Issues
 
-2. **Verify configuration**:
-   - UI must be enabled: `ui: { enabled: true }`
-   - Path must be correct: `ui: { path: '/ui' }`
+The package handles hot reloads automatically. If you experience issues:
+
+1. **Restart external servers**:
+   ```bash
+   # Stop servers (Ctrl+C)
+   next-inspector-server --ui-port 3001 --ws-port 8080
+   ```
+
+2. **Clear browser cache** and refresh the UI
+
+### Connection Issues
+
+If WebSocket connection fails:
+
+1. **Check server is running**:
+   ```bash
+   curl http://localhost:3001/ui
+   ```
+
+2. **Verify port availability**:
+   ```bash
+   lsof -i :8080
+   ```
+
+3. **Check connection logs**:
+   - Look for "📡 [WEBSOCKET] Connected to external server" message
+   - Check for "❌ [WEBSOCKET] Connection error" messages
+
+### Mock Mode
+
+If the WebSocket library is not available, the interceptors will use mock functions and log warnings. This ensures your app continues to work but without real-time monitoring.
+
+**Expected behavior:**
+- Console shows: "⚠️ Mock sendWS called - no WebSocket connection available"
+- Interceptors still work but data is not sent anywhere
+- App continues to function normally
+
+## 📄 License
+
+MIT
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read our contributing guidelines and submit pull requests to our repository.
+
+## 📞 Support
+
+If you encounter any issues or have questions, please open an issue on our GitHub repository.

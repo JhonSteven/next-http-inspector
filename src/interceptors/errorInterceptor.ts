@@ -1,12 +1,10 @@
-import { sendWS, getGlobalWsServer } from '../wsServer';
 import type { WebSocketServer } from 'ws';
 
-export function interceptErrors(wsServer: WebSocketServer | undefined) {
+export function interceptErrors(sendWS: (data: any) => void) {
   const origError = console.error;
   
   // Logs de inicialización usando la función original directamente
   origError('🔧 [ERROR_INTERCEPTOR] Setting up error interceptor');
-  origError('🔧 [ERROR_INTERCEPTOR] WebSocket server available:', !!wsServer);
 
   console.error = (...args) => {
     // Evitar loops infinitos - no interceptar nuestros propios logs del sistema
@@ -25,9 +23,8 @@ export function interceptErrors(wsServer: WebSocketServer | undefined) {
       return;
     }
     
-    // Usar el servidor WebSocket global si está disponible
-    const currentWsServer = wsServer || getGlobalWsServer() || undefined;
-    sendWS(currentWsServer, { type: 'error', payload: args });
+    // Usar la función de envío proporcionada
+    sendWS({ type: 'error', payload: args });
     origError('[CONSOLE_ERROR]', ...args);
   };
 }

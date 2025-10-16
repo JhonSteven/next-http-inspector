@@ -1,4 +1,3 @@
-import { sendWS, getGlobalWsServer } from './../wsServer';
 import type { WebSocketServer } from 'ws';
 
 // Type declaration for global state
@@ -94,7 +93,7 @@ function createBaseRequestInfo(url: string | URL | Request, options: RequestInit
   const urlObj = new URL(urlString);
   
   return {
-    id: Date.now() + Math.random(),
+    id: 'req_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
     url: urlString,
     method: options.method || 'GET',
     startTime,
@@ -122,7 +121,7 @@ function getInterceptorState() {
 }
 
 export function interceptFetch(
-  wsServer: WebSocketServer | undefined,
+  sendWS: (data: any) => void,
   fetchGroupInterval: number = 20000
 ) {
   if (typeof globalThis.fetch !== 'function') {
@@ -141,7 +140,6 @@ export function interceptFetch(
   }
 
   console.log('🔧 [FETCH_INTERCEPTOR] Setting up fetch interceptor');
-  console.log('🔧 [FETCH_INTERCEPTOR] WebSocket server available:', !!wsServer);
 
   // Store the original fetch function
   state.originalFetch = globalThis.fetch;
@@ -200,10 +198,10 @@ export function interceptFetch(
 
       fetchLogs.push(info);
       
-      // Usar el servidor WebSocket global si está disponible
-      const currentWsServer = wsServer || getGlobalWsServer() || undefined;
-      console.log(`📤 [FETCH_INTERCEPTOR] Sending fetch data via WebSocket. Server available: ${!!currentWsServer}`);
-      sendWS(currentWsServer, { type: 'fetch', payload: info });
+      // Usar la función de envío proporcionada
+      console.log(`📤 [FETCH_INTERCEPTOR] Sending fetch data via WebSocket`);
+      console.log(`📤 [FETCH_INTERCEPTOR] Data being sent:`, { type: 'fetch', payload: info });
+      sendWS({ type: 'fetch', payload: info });
 
       return res;
     } catch (error: any) {
@@ -223,10 +221,9 @@ export function interceptFetch(
 
       fetchLogs.push(errInfo);
       
-      // Usar el servidor WebSocket global si está disponible
-      const currentWsServer = wsServer || getGlobalWsServer() || undefined;
-      console.log(`📤 [FETCH_INTERCEPTOR] Sending fetch error via WebSocket. Server available: ${!!currentWsServer}`);
-      sendWS(currentWsServer, { type: 'fetch_error', payload: errInfo });
+      // Usar la función de envío proporcionada
+      console.log(`📤 [FETCH_INTERCEPTOR] Sending fetch error via WebSocket`);
+      sendWS({ type: 'fetch_error', payload: errInfo });
       throw error;
     } finally {
       // Clean up the request ID after a delay to allow for retries

@@ -1,5 +1,19 @@
-import { createWebSocketServer, getGlobalWsServer, closeWebSocketServer } from './wsServer';
-import { createUIServer } from './uiServer';
+// Only import Node.js modules when running in Node.js environment
+let WebSocket: any;
+
+// Check if we're running in Node.js environment
+const isNodeEnvironment = typeof process !== 'undefined' && process.versions && process.versions.node;
+
+if (isNodeEnvironment) {
+  try {
+    // Import WebSocket library directly
+    WebSocket = require('ws').WebSocket;
+    console.log('✅ Using WebSocket library for external server connection');
+  } catch (error) {
+    console.warn('⚠️ WebSocket library not available:', error instanceof Error ? error.message : String(error));
+  }
+}
+
 import { interceptFetch, getInterceptorStatus, resetFetchInterceptor } from './interceptors/fetchInterceptor';
 import { interceptConsole } from './interceptors/consoleInterceptor';
 import { interceptErrors } from './interceptors/errorInterceptor';
@@ -11,17 +25,70 @@ declare global {
     getInterceptorStatus: () => { isInstalled: boolean; hasOriginalFetch: boolean; currentFetchType: string };
     resetFetchInterceptor: () => void;
     getHotReloadCount: () => number;
-    getGlobalWsServer: () => any;
+    getWsConnection: () => any;
+    getWsConfig: () => { host: string; port: number } | null;
   } | undefined;
 }
 
 // Variables globales para manejar el estado
-let globalWsServer: any = null;
-let globalUiServer: any = null;
 let isInitialized = false;
 let hotReloadCount = 0;
 let lastInitializationTime = 0;
 let connectionMonitorInterval: NodeJS.Timeout | null = null;
+let wsConnection: any = null;
+let wsConfig: { host: string; port: number } | null = null;
+
+// Función para enviar datos al servidor WebSocket externo
+function sendToExternalServer(data: any) {
+  if (!WebSocket || !wsConfig) {
+    console.log('⚠️ Mock sendWS called - no WebSocket connection available:', data.type);
+    return;
+  }
+
+  // Crear conexión si no existe
+  if (!wsConnection) {
+    try {
+      wsConnection = new WebSocket(`ws://${wsConfig.host}:${wsConfig.port}`);
+      
+      wsConnection.on('open', () => {
+        console.log(`📡 [WEBSOCKET] Connected to external server at ws://${wsConfig!.host}:${wsConfig!.port}`);
+        // Enviar el dato pendiente
+        wsConnection.send(JSON.stringify(data));
+      });
+      
+      wsConnection.on('error', (error: any) => {
+        console.log(`❌ [WEBSOCKET] Connection error:`, error.message);
+      });
+      
+      wsConnection.on('close', () => {
+        console.log('🔌 [WEBSOCKET] Connection closed');
+        wsConnection = null;
+      });
+      
+    } catch (error) {
+      console.log('❌ [WEBSOCKET] Failed to create connection:', error);
+      wsConnection = null;
+    }
+  } else if (wsConnection.readyState === WebSocket.OPEN) {
+    // Enviar dato directamente si la conexión está abierta
+    try {
+      wsConnection.send(JSON.stringify(data));
+    } catch (error) {
+      console.log('❌ [WEBSOCKET] Failed to send data:', error);
+    }
+  } else if (wsConnection.readyState === WebSocket.CONNECTING) {
+    // Esperar a que la conexión se abra
+    console.log('⏳ [WEBSOCKET] Connection in progress, queuing data...');
+    wsConnection.once('open', () => {
+      wsConnection.send(JSON.stringify(data));
+    });
+  } else {
+    // Reconectar si la conexión está cerrada
+    console.log('🔄 [WEBSOCKET] Connection closed, reconnecting...');
+    wsConnection = null;
+    sendToExternalServer(data);
+  }
+}
 
 // Función para monitorear el estado de las conexiones WebSocket
 function startConnectionMonitor() {
@@ -30,17 +97,16 @@ function startConnectionMonitor() {
   }
   
   connectionMonitorInterval = setInterval(() => {
-    if (globalWsServer) {
-      const clientCount = globalWsServer.clients.size;
-      const activeClients = Array.from(globalWsServer.clients).filter((ws: any) => ws.readyState === 1).length;
+    if (wsConnection && wsConfig) {
+      const isConnected = wsConnection.readyState === WebSocket.OPEN;
       
-      console.log(`📊 [CONNECTION_MONITOR] WebSocket status - Total clients: ${clientCount}, Active: ${activeClients}`);
+      console.log(`📊 [CONNECTION_MONITOR] External WebSocket status - Connected: ${isConnected}, Server: ws://${wsConfig.host}:${wsConfig.port}`);
       
-      if (clientCount === 0) {
-        console.log('⚠️ [CONNECTION_MONITOR] No WebSocket clients connected - this might indicate a hot reload issue');
+      if (!isConnected) {
+        console.log('⚠️ [CONNECTION_MONITOR] Not connected to external WebSocket server - will reconnect on next data send');
       }
     } else {
-      console.log('❌ [CONNECTION_MONITOR] No WebSocket server available');
+      console.log('❌ [CONNECTION_MONITOR] No WebSocket connection configured');
     }
   }, 10000); // Check every 10 seconds
 }
@@ -59,17 +125,30 @@ export function setupNextInstrument({
   logConsole = true,
   logErrors = true,
   websocket = { enabled: true, port: 8080 },
-  ui = { enabled: true, port: 3001, path: '/ui' },
   fetchGroupInterval = 20000,
-}: InstrumentOptions = {}): WebSocketWrapper {
-  // ⚠️ Development environment check
-  const isDevelopment = process.env.NODE_ENV === 'development' || 
-                       process.env.NODE_ENV === 'dev' || 
-                       process.env.NODE_ENV === undefined; // Default to dev if not set
+}: InstrumentOptions = {}): void {
+  // Check if we're in a browser environment first
+  if (!isNodeEnvironment) {
+    console.warn('⚠️ Next Http Server Inspector requires Node.js environment. Skipping initialization in browser.');
+    return;
+  }
+
+  // Check if Node.js modules are available
+  if (!WebSocket) {
+    console.warn('⚠️ WebSocket library not available. Skipping initialization.');
+    return;
+  }
+
+  // ⚠️ Development environment check (only in Node.js)
+  const nodeEnv = process.env.NODE_ENV;
+  const isProduction = nodeEnv === 'production';
+  const isDevelopment = !isProduction; // Default to development unless explicitly production
+
+  console.log(`🔍 [ENV] NODE_ENV: ${nodeEnv}, isProduction: ${isProduction}, isDevelopment: ${isDevelopment}`);
 
   if (!isDevelopment) {
     console.warn('⚠️ Next Http Server Inspector is designed for development only. Skipping initialization in production.');
-    return { wsServer: undefined, uiServer: undefined };
+    return;
   }
 
   const currentTime = Date.now();
@@ -79,64 +158,40 @@ export function setupNextInstrument({
   if (isInitialized && timeSinceLastInit < 5000) {
     hotReloadCount++;
     console.log(`🔥 [HOT_RELOAD] Detected hot reload #${hotReloadCount} (${timeSinceLastInit}ms since last init)`);
-    console.log('🔥 [HOT_RELOAD] This might be causing WebSocket connection issues');
   }
 
-  // Si ya está inicializado, reutilizar las instancias existentes
+  // Si ya está inicializado, no hacer nada
   if (isInitialized) {
-    console.log('🔄 [INIT] Next Http Server Inspector already initialized, reusing existing instances...');
-    console.log(`🔄 [INIT] Current WebSocket server: ${!!globalWsServer}`);
-    console.log(`🔄 [INIT] Current UI server: ${!!globalUiServer}`);
-    return { wsServer: globalWsServer, uiServer: globalUiServer };
+    console.log('🔄 [INIT] Next Http Server Inspector already initialized, skipping...');
+    return;
   }
 
-  console.log('🚀 Initializing Next Http Server Inspector...');
+  console.log('🚀 Initializing Next Http Server Inspector (Interceptors Only)...');
+  console.log(`📡 [INIT] Will send data to WebSocket server on port ${websocket.port}`);
 
-  // Validar puertos
-  if (websocket.enabled && ui.enabled && websocket.port === ui.port) {
-    console.error('❌ WebSocket and UI cannot use the same port');
-    throw new Error('WebSocket and UI ports must be different');
-  }
-
-  // 1️⃣ Inicializar WebSocket
+  // Configurar conexión WebSocket externa
   if (websocket.enabled) {
-    try {
-      globalWsServer = createWebSocketServer(websocket.port);
-      console.log(`✅ WebSocket server started on port ${websocket.port}`);
-    } catch (error) {
-      console.error('❌ Failed to start WebSocket server:', error);
-      throw error;
-    }
+    wsConfig = {
+      host: 'localhost',
+      port: websocket.port
+    };
+    console.log(`📡 [INIT] WebSocket connection configured for ws://${wsConfig.host}:${wsConfig.port}`);
   }
 
-  // 2️⃣ Inicializar servidor UI
-  if (ui.enabled) {
-    try {
-      globalUiServer = createUIServer(ui.port, ui.path, websocket?.port || 8080);
-      console.log(`✅ UI server started on port ${ui.port}`);
-    } catch (error) {
-      console.error('❌ Failed to start UI server:', error);
-      throw error;
-    }
-  }
-
-  // 3️⃣ Configurar interceptores
+  // Configurar interceptores
   if (logFetch) {
-    console.log('🔧 [INIT] Before setting up fetch interceptor');
-    console.log('🔧 [INIT] Interceptor status:', getInterceptorStatus());
-    interceptFetch(globalWsServer, fetchGroupInterval);
-    console.log('🔧 [INIT] After setting up fetch interceptor');
-    console.log('🔧 [INIT] Interceptor status:', getInterceptorStatus());
+    console.log('🔧 [INIT] Setting up fetch interceptor');
+    interceptFetch(sendToExternalServer, fetchGroupInterval);
     console.log('✅ Fetch interceptor enabled');
   }
   
   if (logConsole) {
-    interceptConsole(globalWsServer);
+    interceptConsole(sendToExternalServer);
     console.log('✅ Console interceptor enabled');
   }
   
   if (logErrors) {
-    interceptErrors(globalWsServer);
+    interceptErrors(sendToExternalServer);
     console.log('✅ Error interceptor enabled');
   }
 
@@ -148,8 +203,7 @@ export function setupNextInstrument({
   
   console.log('🎉 [INIT] Next Http Server Inspector initialized successfully!');
   console.log(`🎉 [INIT] Hot reload count: ${hotReloadCount}`);
-  console.log(`🎉 [INIT] WebSocket server: ${!!globalWsServer}`);
-  console.log(`🎉 [INIT] UI server: ${!!globalUiServer}`);
+  console.log('💡 [INIT] Note: Make sure external WebSocket server is running on the configured port');
   
   // Expose debugging functions to global scope for browser console access
   if (typeof globalThis !== 'undefined') {
@@ -157,11 +211,10 @@ export function setupNextInstrument({
       getInterceptorStatus,
       resetFetchInterceptor,
       getHotReloadCount: () => hotReloadCount,
-      getGlobalWsServer: () => globalWsServer
+      getWsConnection: () => wsConnection,
+      getWsConfig: () => wsConfig
     };
   }
-  
-  return { wsServer: globalWsServer, uiServer: globalUiServer };
 }
 
 // Export debugging functions
@@ -169,31 +222,38 @@ export { getInterceptorStatus, resetFetchInterceptor };
 
 // Función para reinicializar en caso de hot reload
 export function reinitializeInstrument(options: InstrumentOptions = {}) {
+  // Check if we're in a browser environment
+  if (!isNodeEnvironment) {
+    console.warn('⚠️ Next Http Server Inspector requires Node.js environment. Skipping reinitialization in browser.');
+    return;
+  }
+
+  // Check if Node.js modules are available
+  if (!WebSocket) {
+    console.warn('⚠️ WebSocket library not available. Skipping reinitialization.');
+    return;
+  }
+
   hotReloadCount++;
   console.log(`🔄 [REINIT] Reinitializing Next Http Server Inspector due to hot reload #${hotReloadCount}...`);
-  console.log(`🔄 [REINIT] Current state - WS: ${!!globalWsServer}, UI: ${!!globalUiServer}, Init: ${isInitialized}`);
+  console.log(`🔄 [REINIT] Current state - Init: ${isInitialized}`);
   
   // Detener el monitor de conexiones
   stopConnectionMonitor();
   
-  // Cerrar servidores existentes
-  if (globalWsServer) {
-    console.log('🔄 [REINIT] Closing existing WebSocket server...');
-    closeWebSocketServer();
-  }
-  
-  if (globalUiServer) {
-    console.log('🔄 [REINIT] Closing existing UI server...');
-    globalUiServer.close();
+  // Cerrar conexión WebSocket existente
+  if (wsConnection) {
+    console.log('🔄 [REINIT] Closing existing WebSocket connection...');
+    wsConnection.close();
+    wsConnection = null;
   }
   
   // Resetear estado
-  globalWsServer = null;
-  globalUiServer = null;
   isInitialized = false;
+  wsConfig = null;
   
   console.log('🔄 [REINIT] State reset, reinitializing...');
   
   // Reinicializar con las mismas opciones
-  return setupNextInstrument(options);
+  setupNextInstrument(options);
 }

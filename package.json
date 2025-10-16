@@ -1,13 +1,22 @@
 {
-    "name": "next-http-server-inspector",
-    "version": "0.2.1",
-    "description": "Next Http Server Inspector - Development toolkit for Next.js with logging, interceptors and WebSocket for real-time monitoring (dev-only).",
+    "name": "next-http-inspector",
+    "version": "0.2.2",
+    "description": "Next Http Inspector - Interceptors for Next.js with WebSocket logging and monitoring (dev-only).",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
+    "browser": {
+        "http": false,
+        "ws": false,
+        "fs": false,
+        "path": false,
+        "url": false,
+        "util": false
+    },
     "scripts": {
-        "build": "tsc",
+        "build": "webpack --config webpack.config.js",
+        "build:types": "tsc --declaration --emitDeclarationOnly --outDir dist",
         "dev": "tsc --watch",
-        "prepublishOnly": "npm run build"
+        "prepublishOnly": "npm run build && npm run build:types"
     },
     "engines": {
         "node": ">=16.0.0"
@@ -15,34 +24,23 @@
     "author": "Jhon Parra",
     "license": "MIT",
     "dependencies": {
-        "@types/react": "^19.2.2",
-        "@types/react-dom": "^19.2.2",
-        "react": "^19.2.0",
-        "react-dom": "^19.2.0",
         "ws": "^8.16.0"
     },
     "devDependencies": {
-        "@babel/core": "^7.25.0",
-        "@babel/preset-react": "^7.25.0",
         "@types/ws": "^8.18.1",
-        "babel-loader": "^9.2.0",
-        "css-loader": "^7.1.2",
-        "html-webpack-plugin": "^5.6.4",
-        "style-loader": "^4.0.0",
         "ts-loader": "^9.5.4",
         "typescript": "^5.6.0",
         "webpack": "^5.95.0",
-        "webpack-cli": "^5.1.4",
-        "webpack-dev-server": "^5.1.0"
+        "webpack-cli": "^5.1.4"
     },
     "keywords": [
         "nextjs",
         "instrumentation",
+        "interceptors",
         "logger",
         "monitoring",
         "websocket",
         "debug",
-        "telemetry",
         "development",
         "dev-tools"
     ],
