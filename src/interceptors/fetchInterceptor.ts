@@ -2,7 +2,7 @@
 declare global {
   var __next_http_inspector_fetch_interceptor__: {
     isInstalled: boolean;
-    originalFetch: typeof globalThis.fetch | null;
+    originalFetch: typeof global.fetch | null;
   } | undefined;
 }
 
@@ -105,26 +105,26 @@ function createBaseRequestInfo(url: string | URL | Request, options: RequestInit
 }
 
 // Global state to track if interceptor is already installed
-// Using globalThis to persist across hot reloads
+// Using global to persist across hot reloads
 const INTERCEPTOR_KEY = '__next_http_inspector_fetch_interceptor__';
 
 function getInterceptorState() {
-  if (!globalThis[INTERCEPTOR_KEY]) {
-    globalThis[INTERCEPTOR_KEY] = {
+  if (!global[INTERCEPTOR_KEY]) {
+    global[INTERCEPTOR_KEY] = {
       isInstalled: false,
       originalFetch: null
     };
   }
-  return globalThis[INTERCEPTOR_KEY];
+  return global[INTERCEPTOR_KEY];
 }
 
 export function interceptFetch(
   sendWS: (data: any) => void,
   httpConfig?: { host: string; port: number; endpoint: string } | null,
-  fetch?: typeof globalThis.fetch | null
+  fetch?: typeof global.fetch | null
 ) {
   // Usar fetch pasado o el por defecto
-  const fetchToUse = fetch || globalThis.fetch;
+  const fetchToUse = fetch || global.fetch;
   
   if (typeof fetchToUse !== 'function') {
     console.log('❌ [FETCH_INTERCEPTOR] Fetch function not available');
@@ -136,7 +136,7 @@ export function interceptFetch(
   // Check if interceptor is already installed
   if (state.isInstalled) {
     console.log('🔧 [FETCH_INTERCEPTOR] Interceptor already installed, skipping');
-    console.log('🔧 [FETCH_INTERCEPTOR] Current fetch function:', typeof globalThis.fetch);
+    console.log('🔧 [FETCH_INTERCEPTOR] Current fetch function:', typeof global.fetch);
     console.log('🔧 [FETCH_INTERCEPTOR] Original fetch function:', typeof state.originalFetch);
     return;
   }
@@ -149,8 +149,8 @@ export function interceptFetch(
   // Mark as installed
   state.isInstalled = true;
 
-  // Reemplazar el fetch en globalThis con nuestra versión interceptada
-  globalThis.fetch = async (...args) => {
+  // Reemplazar el fetch en global con nuestra versión interceptada
+  global.fetch = async (...args) => {
     const startTime = performance.now();
     const startDate = new Date();
     const url = args[0];

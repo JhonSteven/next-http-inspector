@@ -13,5 +13,5 @@ export interface HttpConfig {
 export interface InstrumentOptions {
   websocket?: WebSocketConfig;
   http?: HttpConfig;
-  fetch?: typeof globalThis.fetch | null;
+  fetch?: typeof global.fetch | null;
 }

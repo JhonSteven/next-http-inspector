@@ -182,7 +182,7 @@ export function initFetchServerInterceptor(options: InstrumentOptions = {}): voi
   }
 
   // Configurar interceptor de fetch
-  const fetchToUse = options.fetch || globalThis.fetch;
+  const fetchToUse = options.fetch || global.fetch;
   interceptFetch(sendToExternalServer, httpConfig, fetchToUse);
 
   isInitialized = true;

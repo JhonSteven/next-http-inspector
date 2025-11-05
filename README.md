@@ -85,7 +85,7 @@ initFetchServerInterceptor({
     port: 3001,            // HTTP server port
     endpoint: '/api/logs'  // HTTP endpoint
   },
-  fetch: globalThis.fetch  // Optional: custom fetch function
+  fetch: global.fetch  // Optional: custom fetch function
 });
 ```
 
