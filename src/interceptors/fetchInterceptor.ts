@@ -162,12 +162,12 @@ export function interceptFetch(
   const state = getInterceptorState();
 
   // Check if interceptor is already installed
-  if (state.isInstalled) {
-    console.log('🔧 [FETCH_INTERCEPTOR] Interceptor already installed, skipping');
-    console.log('🔧 [FETCH_INTERCEPTOR] Current fetch function:', typeof global.fetch);
-    console.log('🔧 [FETCH_INTERCEPTOR] Original fetch function:', typeof state.originalFetch);
-    return;
-  }
+  // if (state.isInstalled) {
+  //   console.log('🔧 [FETCH_INTERCEPTOR] Interceptor already installed, skipping');
+  //   console.log('🔧 [FETCH_INTERCEPTOR] Current fetch function:', typeof global.fetch);
+  //   console.log('🔧 [FETCH_INTERCEPTOR] Original fetch function:', typeof state.originalFetch);
+  //   return;
+  // }
 
   console.log('🔧 [FETCH_INTERCEPTOR] Setting up fetch interceptor');
 
