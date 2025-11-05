@@ -120,11 +120,14 @@ function getInterceptorState() {
 
 export function interceptFetch(
   sendWS: (data: any) => void,
-  fetchGroupInterval: number = 20000,
-  httpConfig?: { host: string; port: number; endpoint: string } | null
+  httpConfig?: { host: string; port: number; endpoint: string } | null,
+  fetch?: typeof globalThis.fetch | null
 ) {
-  if (typeof globalThis.fetch !== 'function') {
-    console.log('❌ [FETCH_INTERCEPTOR] Global fetch not available');
+  // Usar fetch pasado o el por defecto
+  const fetchToUse = fetch || globalThis.fetch;
+  
+  if (typeof fetchToUse !== 'function') {
+    console.log('❌ [FETCH_INTERCEPTOR] Fetch function not available');
     return;
   }
 
@@ -141,29 +144,19 @@ export function interceptFetch(
   console.log('🔧 [FETCH_INTERCEPTOR] Setting up fetch interceptor');
 
   // Store the original fetch function
-  state.originalFetch = globalThis.fetch;
-  const fetchLogs: any[] = [];
-  const processedRequests = new Set<string>();
+  state.originalFetch = fetchToUse;
 
   // Mark as installed
   state.isInstalled = true;
 
+  // Reemplazar el fetch en globalThis con nuestra versión interceptada
   globalThis.fetch = async (...args) => {
     const startTime = performance.now();
     const startDate = new Date();
     const url = args[0];
     const options = args[1] || {};
     
-    // Create a unique request identifier to prevent duplicates
-    const requestId = `${url}_${options.method || 'GET'}_${startTime}`;
-    
     console.log(`🌐 [FETCH_INTERCEPTOR] Intercepting fetch request: ${options.method || 'GET'} ${url}`);
-    
-    // Skip if this request was already processed
-    if (processedRequests.has(requestId)) {
-      console.log(`⏭️ [FETCH_INTERCEPTOR] Skipping duplicate request: ${requestId}`);
-      return state.originalFetch!(...args);
-    }
     
     // Skip HTTP requests to the log server to prevent infinite loops
     if (httpConfig && typeof url === 'string') {
@@ -178,13 +171,13 @@ export function interceptFetch(
       }
     }
     
-    processedRequests.add(requestId);
-    
     try {
       const res = await state.originalFetch!(...args);
       const endTime = performance.now();
       const endDate = new Date();
       const duration = endTime - startTime;
+
+      console.log('[STACK_TRACE]---------------->', new Error().stack);
 
       console.log(`✅ [FETCH_INTERCEPTOR] Request completed: ${res.status} ${res.statusText} (${duration.toFixed(2)}ms)`);
 
@@ -208,8 +201,6 @@ export function interceptFetch(
         responseBody
       };
 
-      fetchLogs.push(info);
-      
       // Usar la función de envío proporcionada
       console.log(`📤 [FETCH_INTERCEPTOR] Sending fetch data via WebSocket`);
       console.log(`📤 [FETCH_INTERCEPTOR] Data being sent:`, { type: 'fetch', payload: JSON.stringify(info).slice(0, 100) + '...' });
@@ -231,38 +222,11 @@ export function interceptFetch(
         endDate: endDate.toISOString()
       };
 
-      fetchLogs.push(errInfo);
-      
       // Usar la función de envío proporcionada
       console.log(`📤 [FETCH_INTERCEPTOR] Sending fetch error via WebSocket`);
       sendWS({ type: 'fetch_error', payload: errInfo });
       throw error;
-    } finally {
-      // Clean up the request ID after a delay to allow for retries
-      setTimeout(() => {
-        processedRequests.delete(requestId);
-      }, 1000);
     }
   };
 }
 
-// Function to check interceptor status
-export function getInterceptorStatus() {
-  const state = getInterceptorState();
-  return {
-    isInstalled: state.isInstalled,
-    hasOriginalFetch: !!state.originalFetch,
-    currentFetchType: typeof globalThis.fetch
-  };
-}
-
-// Function to reset the interceptor (useful for testing or manual cleanup)
-export function resetFetchInterceptor() {
-  const state = getInterceptorState();
-  if (state.originalFetch && state.isInstalled) {
-    globalThis.fetch = state.originalFetch;
-    state.isInstalled = false;
-    state.originalFetch = null;
-    console.log('🔧 [FETCH_INTERCEPTOR] Interceptor reset');
-  }
-}
