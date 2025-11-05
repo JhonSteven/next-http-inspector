@@ -87,19 +87,47 @@ function createUrlParsed(url: string | URL) {
 
 // Helper function to create base request info
 function createBaseRequestInfo(url: string | URL | Request, options: RequestInit, startTime: number, startDate: Date) {
-  const urlString = url.toString();
+  // Convertir url a string de forma segura
+  let urlString: string;
+  let method: string;
+  let headers: any;
+  let body: any;
+  
+  if (typeof url === 'string') {
+    urlString = url;
+    method = options.method || 'GET';
+    headers = options.headers;
+    body = options.body;
+  } else if (url instanceof URL) {
+    urlString = url.toString();
+    method = options.method || 'GET';
+    headers = options.headers;
+    body = options.body;
+  } else if (url instanceof Request) {
+    urlString = url.url;
+    method = options.method || url.method || 'GET';
+    // Si hay headers en options, los combinamos con los del Request
+    headers = options.headers || url.headers;
+    body = options.body !== undefined ? options.body : url.body;
+  } else {
+    urlString = String(url);
+    method = options.method || 'GET';
+    headers = options.headers;
+    body = options.body;
+  }
+  
   const urlObj = new URL(urlString);
   
   return {
     id: 'req_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
     url: urlString,
-    method: options.method || 'GET',
+    method,
     startTime,
     startDate: startDate.toISOString(),
     timestamp: startDate.toISOString(),
-    requestHeaders: extractRequestHeaders(options.headers),
+    requestHeaders: extractRequestHeaders(headers),
     urlParams: extractUrlParams(urlString),
-    requestBody: extractRequestBody(options.body),
+    requestBody: extractRequestBody(body),
     urlParsed: createUrlParsed(urlString)
   };
 }
@@ -156,18 +184,37 @@ export function interceptFetch(
     const url = args[0];
     const options = args[1] || {};
     
-    console.log(`🌐 [FETCH_INTERCEPTOR] Intercepting fetch request: ${options.method || 'GET'} ${url}`);
+    // Convertir url a string de forma segura para logging
+    let urlString: string;
+    try {
+      urlString = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url instanceof Request ? url.url : String(url);
+    } catch (e) {
+      urlString = '[Unable to parse URL]';
+    }
+    
+    console.log(`🌐 [FETCH_INTERCEPTOR] Intercepting fetch request: ${options.method || 'GET'} ${urlString}`);
     
     // Skip HTTP requests to the log server to prevent infinite loops
-    if (httpConfig && typeof url === 'string') {
-      const urlObj = new URL(url);
-      const isLogServerRequest = urlObj.hostname === httpConfig.host && 
-                                 urlObj.port === httpConfig.port.toString() && 
-                                 urlObj.pathname === httpConfig.endpoint;
-      
-      if (isLogServerRequest) {
-        console.log(`⏭️ [FETCH_INTERCEPTOR] Skipping log server request to prevent infinite loop: ${url}`);
-        return state.originalFetch!(...args);
+    if (httpConfig) {
+      try {
+        const urlObj = typeof url === 'string' || url instanceof URL 
+          ? new URL(url.toString()) 
+          : url instanceof Request 
+            ? new URL(url.url) 
+            : null;
+        
+        if (urlObj) {
+          const isLogServerRequest = urlObj.hostname === httpConfig.host && 
+                                     urlObj.port === httpConfig.port.toString() && 
+                                     urlObj.pathname === httpConfig.endpoint;
+          
+          if (isLogServerRequest) {
+            console.log(`⏭️ [FETCH_INTERCEPTOR] Skipping log server request to prevent infinite loop: ${urlString}`);
+            return state.originalFetch!(...args);
+          }
+        }
+      } catch (e) {
+        // Si no se puede parsear la URL, continuar con el request normal
       }
     }
     
@@ -176,8 +223,6 @@ export function interceptFetch(
       const endTime = performance.now();
       const endDate = new Date();
       const duration = endTime - startTime;
-
-      console.log('[STACK_TRACE]---------------->', new Error().stack);
 
       console.log(`✅ [FETCH_INTERCEPTOR] Request completed: ${res.status} ${res.statusText} (${duration.toFixed(2)}ms)`);
 

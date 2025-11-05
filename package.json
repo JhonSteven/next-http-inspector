@@ -1,6 +1,6 @@
 {
     "name": "next-http-inspector",
-    "version": "0.2.6",
+    "version": "0.2.7",
     "description": "Next Http Inspector - Interceptors for Next.js with WebSocket logging and monitoring (dev-only).",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
