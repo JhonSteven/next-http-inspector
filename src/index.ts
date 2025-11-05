@@ -183,7 +183,8 @@ export function initFetchServerInterceptor(options: InstrumentOptions = {}): voi
 
   // Configurar interceptor de fetch
   const fetchToUse = options.fetch || global.fetch;
-  interceptFetch(sendToExternalServer, httpConfig, fetchToUse);
+  const disableCache = options.disableCache ?? false;
+  interceptFetch(sendToExternalServer, httpConfig, fetchToUse, disableCache);
 
   isInitialized = true;
   console.log('✅ Fetch Server Interceptor initialized successfully!');

@@ -14,4 +14,5 @@ export interface InstrumentOptions {
   websocket?: WebSocketConfig;
   http?: HttpConfig;
   fetch?: typeof global.fetch | null;
+  disableCache?: boolean;
 }

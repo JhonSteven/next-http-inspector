@@ -149,7 +149,8 @@ function getInterceptorState() {
 export function interceptFetch(
   sendWS: (data: any) => void,
   httpConfig?: { host: string; port: number; endpoint: string } | null,
-  fetch?: typeof global.fetch | null
+  fetch?: typeof global.fetch | null,
+  disableCache?: boolean
 ) {
   // Usar fetch pasado o el por defecto
   const fetchToUse = fetch || global.fetch;
@@ -182,7 +183,19 @@ export function interceptFetch(
     const startTime = performance.now();
     const startDate = new Date();
     const url = args[0];
-    const options = args[1] || {};
+    let options = args[1] || {};
+    
+    // Si disableCache es true, aplicar configuración de caché
+    if (disableCache) {
+      options = {
+        ...options,
+        next: {
+          ...(options as any).next,
+          revalidate: 0
+        },
+        cache: 'no-store' as RequestCache
+      } as RequestInit & { next?: { revalidate?: number } };
+    }
     
     // Convertir url a string de forma segura para logging
     let urlString: string;
@@ -210,7 +223,7 @@ export function interceptFetch(
           
           if (isLogServerRequest) {
             console.log(`⏭️ [FETCH_INTERCEPTOR] Skipping log server request to prevent infinite loop: ${urlString}`);
-            return state.originalFetch!(...args);
+            return state.originalFetch!(url, options);
           }
         }
       } catch (e) {
@@ -219,12 +232,19 @@ export function interceptFetch(
     }
     
     try {
-      const res = await state.originalFetch!(...args);
+      const res = await state.originalFetch!(url, options);
       const endTime = performance.now();
       const endDate = new Date();
       const duration = endTime - startTime;
 
-      console.log(`✅ [FETCH_INTERCEPTOR] Request completed: ${res.status} ${res.statusText} (${duration.toFixed(2)}ms)`);
+      // Extract cache state from Next.js header
+      const cacheState = res.headers.get('x-nextjs-cache') || null;
+      
+      // Determine if fetch was executed based on cache state
+      const wasExecuted = cacheState === 'MISS' || cacheState === 'DYNAMIC' || cacheState === null;
+      const cacheStatus = cacheState === 'HIT' ? '📦 CACHED (not executed)' : '🚀 EXECUTED';
+      
+      console.log(`✅ [FETCH_INTERCEPTOR] Request completed: ${res.status} ${res.statusText} (${duration.toFixed(2)}ms) | ${cacheStatus} | cacheState: ${cacheState || 'N/A'}`);
 
       // Extract response headers
       const responseHeaders: Record<string, string> = {};
@@ -232,8 +252,16 @@ export function interceptFetch(
         responseHeaders[key] = value;
       });
 
-      // Extract response body
-      const responseBody = await extractResponseBody(res);
+      // Extract response body (works for both HIT and MISS)
+      // Clone the response to avoid consuming the body
+      let responseBody;
+      try {
+        const clonedRes = res.clone();
+        responseBody = await extractResponseBody(clonedRes);
+      } catch (bodyError) {
+        // If body extraction fails (e.g., already consumed), try to extract from original
+        responseBody = await extractResponseBody(res).catch(() => '[Unable to extract response body]');
+      }
 
       const info = {
         ...createBaseRequestInfo(url, options, startTime, startDate),
@@ -243,7 +271,9 @@ export function interceptFetch(
         endTime,
         endDate: endDate.toISOString(),
         responseHeaders,
-        responseBody
+        responseBody,
+        cacheState,
+        wasExecuted // Add this flag for clarity
       };
 
       // Usar la función de envío proporcionada
